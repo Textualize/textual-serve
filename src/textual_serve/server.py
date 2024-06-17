@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import io
 import logging
 import os
 from pathlib import Path
 import signal
+import sys
 from typing import Any, Callable
+import pickle
+from asyncio.subprocess import Process
 
+from importlib.metadata import version
 
 import aiohttp_jinja2
 from aiohttp import web
 from aiohttp.web_runner import GracefulExit
 import jinja2
+
+from rich import print
 
 from textual.app import App
 
@@ -57,6 +65,8 @@ class Server:
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
 
+        self._pickled_app_factory: bytes = pickle.dumps(app_factory)
+
     def request_exit(self, reason: str | None = None) -> None:
         """Gracefully exit the application, optionally supplying a reason.
 
@@ -88,6 +98,11 @@ class Server:
         pass
 
     def serve(self) -> None:
+        """Serve the Textual application.
+
+        This will run a local webserver until it is closed with Ctrl+C
+
+        """
         loop = asyncio.get_event_loop()
         loop.add_signal_handler(signal.SIGINT, self.request_exit)
         loop.add_signal_handler(signal.SIGTERM, self.request_exit)
@@ -98,6 +113,7 @@ class Server:
         router = request.app.router
 
         def get_url(route: str, **args) -> str:
+            """Get a URL from the aiohttp router."""
             path = router[route].url_for(**args)
             return f"{self.public_url}{path}"
 
@@ -117,5 +133,75 @@ class Server:
         print(context)
         return context
 
-    async def handle_websocket(self, request: web.Request) -> web.Response:
-        return web.Response()
+    def build_environment(self, width: int = 80, height: int = 24) -> dict[str, str]:
+        """Build an environment dict for the App subprocess.
+
+        Args:
+            width: Initial width.
+            height: Initial height.
+
+        Returns:
+            A environment dict.
+        """
+        environment = dict(os.environ.copy())
+        environment["TEXTUAL_DRIVER"] = "textual.drivers.web_driver:WebDriver"
+        environment["TEXTUAL_FPS"] = "60"
+        environment["TEXTUAL_COLOR_SYSTEM"] = "truecolor"
+        environment["TERM_PROGRAM"] = "textual"
+        environment["TERM_PROGRAM_VERSION"] = version("textual-serve")
+        environment["COLUMNS"] = str(width)
+        environment["ROWS"] = str(height)
+        return environment
+
+    async def open_app_process(self, width: int = 80, height: int = 24) -> Process:
+        """Open a process to run the app.
+
+        Args:
+            width: Width of the terminal.
+            height: height of the terminal.
+        """
+        environment = self.build_environment(width=width, height=height)
+        encoded_app_factory = base64.b64encode(self._pickled_app_factory)
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-m",
+            "textual_server.runner",
+            encoded_app_factory,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=environment,
+        )
+        assert process.stdin is not None
+        process.stdin.write(encoded_app_factory + b"\n")
+        await process.stdin.drain()
+        return process
+
+    async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
+        websocket = web.WebSocketResponse(heartbeat=15)
+
+        def to_int(number: str, default: int) -> int:
+            try:
+                return int(number)
+            except ValueError:
+                return default
+
+        width = to_int(request.query.get("width", "80"), 80)
+        height = to_int(request.query.get("height", "24"), 24)
+
+        process = await self.open_app_process(width, height)
+
+        try:
+            await websocket.prepare(request)
+
+            async for message in websocket:
+                print(message)
+                pass
+
+        except asyncio.CancelledError:
+            await websocket.close()
+
+        finally:
+            pass
+
+        return websocket
