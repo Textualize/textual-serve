@@ -25,6 +25,7 @@ idna==3.7
     # via yarl
 jinja2==3.1.4
     # via aiohttp-jinja2
+    # via textual-serve
 linkify-it-py==2.0.3
     # via markdown-it-py
 markdown-it-py==3.0.0
