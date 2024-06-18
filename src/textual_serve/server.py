@@ -176,14 +176,11 @@ class Server:
         try:
             await websocket.prepare(request)
 
-            async def on_close():
-                await websocket.close()
-
             app_service = AppService(
                 self.command,
                 write_bytes=websocket.send_bytes,
                 write_str=websocket.send_str,
-                close=on_close,
+                close=websocket.close,
                 debug=self.debug,
             )
             await app_service.start(width, height)

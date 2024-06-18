@@ -40,8 +40,6 @@ class DictionaryApp(App):
         """Looks up a word."""
         url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
 
-        1 / 0
-
         async with httpx.AsyncClient() as client:
             response = await client.get(url)
             try:
