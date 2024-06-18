@@ -7,9 +7,7 @@ import os
 from pathlib import Path
 import signal
 
-from typing import Any, Callable
-import pickle
-
+from typing import Any
 
 import aiohttp_jinja2
 from aiohttp import web
@@ -18,13 +16,11 @@ from aiohttp.web_runner import GracefulExit
 import jinja2
 
 from rich import print
-
-from textual.app import App
-
+from rich.logging import RichHandler
 
 from .app_service import AppService
 
-log = logging.getLogger("textual")
+log = logging.getLogger("textual-serve")
 
 
 class Server:
@@ -65,6 +61,19 @@ class Server:
         base_path = (Path(__file__) / "../").resolve().absolute()
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
+
+        self.initialize_logging()
+
+    def initialize_logging(self) -> None:
+        FORMAT = "%(message)s"
+        logging.basicConfig(
+            level="INFO",
+            format=FORMAT,
+            datefmt="[%X]",
+            handlers=[
+                RichHandler(show_path=False, show_time=False, rich_tracebacks=True)
+            ],
+        )
 
     def request_exit(self, reason: str | None = None) -> None:
         """Gracefully exit the application, optionally supplying a reason.
@@ -128,8 +137,6 @@ class Server:
         context["application"] = {
             "name": self.name,
         }
-
-        print(context)
         return context
 
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
@@ -150,8 +157,11 @@ class Server:
         try:
             await websocket.prepare(request)
 
+            async def on_close():
+                await websocket.close()
+
             app_service = AppService(
-                self.command, websocket.send_bytes, websocket.send_str
+                self.command, websocket.send_bytes, websocket.send_str, on_close
             )
             app_service.start(width, height)
 
@@ -162,11 +172,20 @@ class Server:
                             await app_service.send_bytes(data.encode("utf-8"))
                         case ["resize", {"width": width, "height": height}]:
                             await app_service.set_terminal_size(width, height)
+                        case ["ping", data]:
+                            await app_service.pong(data)
+                        case ["blur"]:
+                            await app_service.blur()
+                        case ["focus"]:
+                            await app_service.focus()
                 elif message.type == BINARY:
                     pass
 
         except asyncio.CancelledError:
             await websocket.close()
+
+        except Exception as error:
+            print(error)
 
         finally:
             await app_service.stop()

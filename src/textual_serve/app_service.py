@@ -9,27 +9,24 @@ from importlib.metadata import version
 
 import rich.repr
 
-from .packets import Handlers
-from .json_codec import JSONCodec
-from .packet_decoder import PacketDecoder
-
 
 Meta: TypeAlias = "dict[str, str | None | int | bool]"
 
 
 @rich.repr.auto
-class AppService(Handlers):
+class AppService:
     def __init__(
         self,
         command: str,
         remote_write_bytes: Callable[[bytes], Awaitable],
         remote_write_str: Callable[[str], Awaitable],
+        remote_close: Callable[[], Awaitable],
     ) -> None:
         self.command = command
         self.remote_write_bytes = remote_write_bytes
         self.remote_write_str = remote_write_str
-        self.codec = JSONCodec()
-        self._packet_decoder = PacketDecoder(self.codec)
+        self.remote_close = remote_close
+
         self._task: asyncio.Task | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
@@ -75,6 +72,9 @@ class AppService(Handlers):
             env=environment,
         )
         assert process.stdin is not None
+        self._stdin = process.stdin
+        await self.focus()
+
         return process
 
     @classmethod
@@ -104,7 +104,10 @@ class AppService(Handlers):
             stdin.write(self.encode_packet(b"D", data))
         except RuntimeError:
             return False
-        await stdin.drain()
+        try:
+            await stdin.drain()
+        except Exception:
+            return False
         return True
 
     async def send_meta(self, data: Meta) -> bool:
@@ -122,7 +125,10 @@ class AppService(Handlers):
             stdin.write(self.encode_packet(b"M", data_bytes))
         except RuntimeError:
             return False
-        await stdin.drain()
+        try:
+            await stdin.drain()
+        except Exception:
+            return False
         return True
 
     async def set_terminal_size(self, width: int, height: int) -> None:
@@ -133,6 +139,15 @@ class AppService(Handlers):
                 "height": height,
             }
         )
+
+    async def pong(self, data: str) -> None:
+        await self.send_meta({"type": "pong", "data": data})
+
+    async def blur(self) -> None:
+        await self.send_meta({"type": "blur"})
+
+    async def focus(self) -> None:
+        await self.send_meta({"type": "focus"})
 
     def start(self, width: int, height: int) -> None:
         self._task = asyncio.create_task(self.run(width, height))
@@ -153,7 +168,6 @@ class AppService(Handlers):
         stderr = process.stderr
         assert stdout is not None
         assert stderr is not None
-        self._stdin = process.stdin
 
         stderr_data = io.BytesIO()
 
@@ -193,6 +207,7 @@ class AppService(Handlers):
                         await self.on_meta(payload)
                     else:
                         raise RuntimeError("unknown packet")
+
         except asyncio.IncompleteReadError:
             pass
         except asyncio.CancelledError:
@@ -204,6 +219,8 @@ class AppService(Handlers):
     async def on_data(self, payload: bytes) -> None:
         await self.remote_write_bytes(payload)
 
-    async def on_meta(self, data: object) -> None:
+    async def on_meta(self, data: bytes) -> None:
         meta_data = json.loads(data)
-        print("on_meta", meta_data)
+        match meta_data:
+            case {"type": "exit"}:
+                await self.remote_close()
