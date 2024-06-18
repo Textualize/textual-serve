@@ -29,12 +29,13 @@ class Server:
     def __init__(
         self,
         command: str,
-        host: str = "0.0.0.0",
+        host: str = "localhost",
         port: int = 8000,
-        name: str = "Textual App",
+        title: str | None = None,
         public_url: str | None = None,
         statics_path: str | os.PathLike = "./static",
         templates_path: str | os.PathLike = "./templates",
+        debug: bool = False,
     ):
         """_summary_
 
@@ -48,7 +49,8 @@ class Server:
         self.command = command
         self.host = host
         self.port = port
-        self.name = name
+        self.title = title or command
+        self.debug = debug
 
         if public_url is None:
             if self.port == 80:
@@ -114,7 +116,13 @@ class Server:
         loop = asyncio.get_event_loop()
         loop.add_signal_handler(signal.SIGINT, self.request_exit)
         loop.add_signal_handler(signal.SIGTERM, self.request_exit)
-        web.run_app(self._make_app(), port=self.port, handle_signals=False, loop=loop)
+        web.run_app(
+            self._make_app(),
+            host=self.host,
+            port=self.port,
+            handle_signals=False,
+            loop=loop,
+        )
 
     @aiohttp_jinja2.template("app_index.html")
     async def handle_index(self, request: web.Request) -> dict[str, Any]:
@@ -135,7 +143,7 @@ class Server:
             },
         }
         context["application"] = {
-            "name": self.name,
+            "name": self.title,
         }
         return context
 
@@ -161,31 +169,38 @@ class Server:
                 await websocket.close()
 
             app_service = AppService(
-                self.command, websocket.send_bytes, websocket.send_str, on_close
+                self.command,
+                write_bytes=websocket.send_bytes,
+                write_str=websocket.send_str,
+                close=on_close,
+                debug=self.debug,
             )
-            app_service.start(width, height)
+            await app_service.start(width, height)
 
-            async for message in websocket:
-                if message.type == TEXT:
-                    match message.json():
-                        case ["stdin", data]:
-                            await app_service.send_bytes(data.encode("utf-8"))
-                        case ["resize", {"width": width, "height": height}]:
-                            await app_service.set_terminal_size(width, height)
-                        case ["ping", data]:
-                            await app_service.pong(data)
-                        case ["blur"]:
-                            await app_service.blur()
-                        case ["focus"]:
-                            await app_service.focus()
-                elif message.type == BINARY:
-                    pass
+            try:
+                async for message in websocket:
+                    if message.type == TEXT:
+                        match message.json():
+                            case ["stdin", data]:
+                                await app_service.send_bytes(data.encode("utf-8"))
+                            case ["resize", {"width": width, "height": height}]:
+                                await app_service.set_terminal_size(width, height)
+                            case ["ping", data]:
+                                await app_service.pong(data)
+                            case ["blur"]:
+                                await app_service.blur()
+                            case ["focus"]:
+                                await app_service.focus()
+                    elif message.type == BINARY:
+                        pass
+            finally:
+                await app_service.stop()
 
         except asyncio.CancelledError:
             await websocket.close()
 
         except Exception as error:
-            print(error)
+            log.exception(error)
 
         finally:
             await app_service.stop()

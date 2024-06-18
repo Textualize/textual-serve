@@ -4,11 +4,13 @@ import json
 import os
 from typing import Awaitable, Callable, Literal, TypeAlias
 from asyncio.subprocess import Process
+import logging
 
 from importlib.metadata import version
 
 import rich.repr
 
+log = logging.getLogger("textual-serve")
 
 Meta: TypeAlias = "dict[str, str | None | int | bool]"
 
@@ -18,15 +20,19 @@ class AppService:
     def __init__(
         self,
         command: str,
-        remote_write_bytes: Callable[[bytes], Awaitable],
-        remote_write_str: Callable[[str], Awaitable],
-        remote_close: Callable[[], Awaitable],
+        *,
+        write_bytes: Callable[[bytes], Awaitable],
+        write_str: Callable[[str], Awaitable],
+        close: Callable[[], Awaitable],
+        debug: bool = False,
     ) -> None:
         self.command = command
-        self.remote_write_bytes = remote_write_bytes
-        self.remote_write_str = remote_write_str
-        self.remote_close = remote_close
+        self.remote_write_bytes = write_bytes
+        self.remote_write_str = write_str
+        self.remote_close = close
+        self.debug = debug
 
+        self._process: Process | None = None
         self._task: asyncio.Task | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
@@ -54,6 +60,9 @@ class AppService:
         environment["TERM_PROGRAM_VERSION"] = version("textual-serve")
         environment["COLUMNS"] = str(width)
         environment["ROWS"] = str(height)
+        if self.debug:
+            environment["TEXTUAL"] = "debug,devtools"
+            environment["TEXTUAL_LOG"] = "textual.log"
         return environment
 
     async def _open_app_process(self, width: int = 80, height: int = 24) -> Process:
@@ -64,7 +73,7 @@ class AppService:
             height: height of the terminal.
         """
         environment = self._build_environment(width=width, height=height)
-        process = await asyncio.create_subprocess_shell(
+        self._process = process = await asyncio.create_subprocess_shell(
             self.command,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
@@ -73,7 +82,6 @@ class AppService:
         )
         assert process.stdin is not None
         self._stdin = process.stdin
-        await self.focus()
 
         return process
 
@@ -149,12 +157,13 @@ class AppService:
     async def focus(self) -> None:
         await self.send_meta({"type": "focus"})
 
-    def start(self, width: int, height: int) -> None:
+    async def start(self, width: int, height: int) -> None:
+        await self._open_app_process(width, height)
         self._task = asyncio.create_task(self.run(width, height))
 
     async def stop(self) -> None:
         if self._task is not None:
-            self._task.cancel()
+            await self.send_meta({"type": "quit"})
             await self._task
             self._task = None
 
@@ -162,7 +171,8 @@ class AppService:
         META = b"M"
         DATA = b"D"
 
-        process = await self._open_app_process(width, height)
+        assert self._process is not None
+        process = self._process
 
         stdout = process.stdout
         stderr = process.stderr
@@ -187,40 +197,53 @@ class AppService:
         try:
             ready = False
             for _ in range(10):
-                line = await stdout.readline()
-                if not line:
+                if not (line := await stdout.readline()):
                     break
                 if line == b"__GANGLION__\n":
                     ready = True
                     break
 
-            if ready:
-                while not self._exit_event.is_set():
-                    type_bytes = await stdout.readexactly(1)
-                    size_bytes = await stdout.readexactly(4)
-                    size = int.from_bytes(size_bytes, "big")
-                    payload = await stdout.readexactly(size)
+            if not ready:
+                log.error("Application failed to start")
+                if error_text := stderr_data.getvalue():
+                    import sys
 
-                    if type_bytes == DATA:
-                        await self.on_data(payload)
-                    elif type_bytes == META:
-                        await self.on_meta(payload)
-                    else:
-                        raise RuntimeError("unknown packet")
+                    sys.stdout.write(error_text.decode("utf-8", "replace"))
+            while True:
+                type_bytes = await stdout.readexactly(1)
+                size_bytes = await stdout.readexactly(4)
+                size = int.from_bytes(size_bytes, "big")
+                payload = await stdout.readexactly(size)
+
+                if type_bytes == DATA:
+                    await self.on_data(payload)
+                elif type_bytes == META:
+                    await self.on_meta(payload)
+                else:
+                    raise RuntimeError("unknown packet")
 
         except asyncio.IncompleteReadError:
             pass
+        except ConnectionResetError:
+            pass
         except asyncio.CancelledError:
             pass
+
         finally:
             stderr_task.cancel()
             await stderr_task
+
+        if error_text := stderr_data.getvalue():
+            import sys
+
+            sys.stdout.write(error_text.decode("utf-8", "replace"))
 
     async def on_data(self, payload: bytes) -> None:
         await self.remote_write_bytes(payload)
 
     async def on_meta(self, data: bytes) -> None:
         meta_data = json.loads(data)
+
         match meta_data:
             case {"type": "exit"}:
                 await self.remote_close()
