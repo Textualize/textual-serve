@@ -35,7 +35,6 @@ class Server:
         public_url: str | None = None,
         statics_path: str | os.PathLike = "./static",
         templates_path: str | os.PathLike = "./templates",
-        debug: bool = False,
     ):
         """_summary_
 
@@ -50,7 +49,7 @@ class Server:
         self.host = host
         self.port = port
         self.title = title or command
-        self.debug = debug
+        self.debug = False
 
         if public_url is None:
             if self.port == 80:
@@ -107,15 +106,18 @@ class Server:
     async def on_shutdown(self, app: web.Application) -> None:
         pass
 
-    def serve(self) -> None:
+    def serve(self, debug: bool = False) -> None:
         """Serve the Textual application.
 
         This will run a local webserver until it is closed with Ctrl+C
 
         """
+        self.debug = debug
         loop = asyncio.get_event_loop()
         loop.add_signal_handler(signal.SIGINT, self.request_exit)
         loop.add_signal_handler(signal.SIGTERM, self.request_exit)
+        if self.debug:
+            log.info("Running in debug mode. You may use textual dev tools.")
         web.run_app(
             self._make_app(),
             host=self.host,
@@ -150,9 +152,18 @@ class Server:
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         websocket = web.WebSocketResponse(heartbeat=15)
 
-        def to_int(number: str, default: int) -> int:
+        def to_int(value: str, default: int) -> int:
+            """Convert to an integer, or return a default if that's not possible.
+
+            Args:
+                number: A string possibly containing a decimal.
+                default: Default value if value can't be decoded.
+
+            Returns:
+                Integer.
+            """
             try:
-                return int(number)
+                return int(value)
             except ValueError:
                 return default
 
