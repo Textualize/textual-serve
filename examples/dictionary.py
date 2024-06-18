@@ -73,7 +73,5 @@ class DictionaryApp(App):
 
 
 if __name__ == "__main__":
-    from textual_serve.server import Server
-
-    server = Server(DictionaryApp)
-    server.serve()
+    app = DictionaryApp()
+    app.run()

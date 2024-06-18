@@ -1,27 +1,28 @@
 from __future__ import annotations
 
 import asyncio
-import base64
-import io
+
 import logging
 import os
 from pathlib import Path
 import signal
-import sys
+
 from typing import Any, Callable
 import pickle
-from asyncio.subprocess import Process
 
-from importlib.metadata import version
 
 import aiohttp_jinja2
 from aiohttp import web
+from aiohttp import WSMsgType
 from aiohttp.web_runner import GracefulExit
 import jinja2
 
 from rich import print
 
 from textual.app import App
+
+
+from .app_service import AppService
 
 log = logging.getLogger("textual")
 
@@ -31,7 +32,7 @@ class Server:
 
     def __init__(
         self,
-        app_factory: Callable[[], App],
+        command: str,
         host: str = "0.0.0.0",
         port: int = 8000,
         name: str = "Textual App",
@@ -48,7 +49,7 @@ class Server:
             statics_path: Path to statics folder. May be absolute or relative to server.py.
             templates_path" Path to templates folder. May be absolute or relative to server.py.
         """
-        self.app_factory = app_factory
+        self.command = command
         self.host = host
         self.port = port
         self.name = name
@@ -64,8 +65,6 @@ class Server:
         base_path = (Path(__file__) / "../").resolve().absolute()
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
-
-        self._pickled_app_factory: bytes = pickle.dumps(app_factory)
 
     def request_exit(self, reason: str | None = None) -> None:
         """Gracefully exit the application, optionally supplying a reason.
@@ -133,50 +132,6 @@ class Server:
         print(context)
         return context
 
-    def build_environment(self, width: int = 80, height: int = 24) -> dict[str, str]:
-        """Build an environment dict for the App subprocess.
-
-        Args:
-            width: Initial width.
-            height: Initial height.
-
-        Returns:
-            A environment dict.
-        """
-        environment = dict(os.environ.copy())
-        environment["TEXTUAL_DRIVER"] = "textual.drivers.web_driver:WebDriver"
-        environment["TEXTUAL_FPS"] = "60"
-        environment["TEXTUAL_COLOR_SYSTEM"] = "truecolor"
-        environment["TERM_PROGRAM"] = "textual"
-        environment["TERM_PROGRAM_VERSION"] = version("textual-serve")
-        environment["COLUMNS"] = str(width)
-        environment["ROWS"] = str(height)
-        return environment
-
-    async def open_app_process(self, width: int = 80, height: int = 24) -> Process:
-        """Open a process to run the app.
-
-        Args:
-            width: Width of the terminal.
-            height: height of the terminal.
-        """
-        environment = self.build_environment(width=width, height=height)
-        encoded_app_factory = base64.b64encode(self._pickled_app_factory)
-        process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-m",
-            "textual_server.runner",
-            encoded_app_factory,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=environment,
-        )
-        assert process.stdin is not None
-        process.stdin.write(encoded_app_factory + b"\n")
-        await process.stdin.drain()
-        return process
-
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         websocket = web.WebSocketResponse(heartbeat=15)
 
@@ -189,19 +144,31 @@ class Server:
         width = to_int(request.query.get("width", "80"), 80)
         height = to_int(request.query.get("height", "24"), 24)
 
-        process = await self.open_app_process(width, height)
+        TEXT = WSMsgType.TEXT
+        BINARY = WSMsgType.BINARY
 
         try:
             await websocket.prepare(request)
 
+            app_service = AppService(
+                self.command, websocket.send_bytes, websocket.send_str
+            )
+            app_service.start(width, height)
+
             async for message in websocket:
-                print(message)
-                pass
+                if message.type == TEXT:
+                    match message.json():
+                        case ["stdin", data]:
+                            await app_service.send_bytes(data.encode("utf-8"))
+                        case ["resize", {"width": width, "height": height}]:
+                            await app_service.set_terminal_size(width, height)
+                elif message.type == BINARY:
+                    pass
 
         except asyncio.CancelledError:
             await websocket.close()
 
         finally:
-            pass
+            await app_service.stop()
 
         return websocket
