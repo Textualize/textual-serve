@@ -200,7 +200,8 @@ class Server:
                                 data["width"], data["height"]
                             )
                         elif type_ == "ping":
-                            await app_service.pong(data)
+                            data = envelope[1]
+                            await websocket.send_json(["pong", data])
                         elif type_ == "blur":
                             await app_service.blur()
                         elif type_ == "focus":

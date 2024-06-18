@@ -140,6 +140,12 @@ class AppService:
         return True
 
     async def set_terminal_size(self, width: int, height: int) -> None:
+        """Tell the process about the new terminal size.
+
+        Args:
+            width: Width of terminal in cells.
+            height: Height of terminal in cells.
+        """
         await self.send_meta(
             {
                 "type": "resize",
@@ -147,9 +153,6 @@ class AppService:
                 "height": height,
             }
         )
-
-    async def pong(self, data: str) -> None:
-        await self.send_meta({"type": "pong", "data": data})
 
     async def blur(self) -> None:
         await self.send_meta({"type": "blur"})
@@ -159,7 +162,7 @@ class AppService:
 
     async def start(self, width: int, height: int) -> None:
         await self._open_app_process(width, height)
-        self._task = asyncio.create_task(self.run(width, height))
+        self._task = asyncio.create_task(self.run())
 
     async def stop(self) -> None:
         if self._task is not None:
@@ -167,7 +170,7 @@ class AppService:
             await self._task
             self._task = None
 
-    async def run(self, width: int = 80, height: int = 24) -> None:
+    async def run(self) -> None:
         META = b"M"
         DATA = b"D"
 
