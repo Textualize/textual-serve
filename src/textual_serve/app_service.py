@@ -17,6 +17,8 @@ Meta: TypeAlias = "dict[str, str | None | int | bool]"
 
 @rich.repr.auto
 class AppService:
+    """Manage a Textual app service."""
+
     def __init__(
         self,
         command: str,
@@ -39,6 +41,7 @@ class AppService:
 
     @property
     def stdin(self) -> asyncio.StreamWriter:
+        """The processes standard input stream."""
         assert self._stdin is not None
         return self._stdin
 
@@ -155,9 +158,11 @@ class AppService:
         )
 
     async def blur(self) -> None:
+        """Send an (app) blur to the process."""
         await self.send_meta({"type": "blur"})
 
     async def focus(self) -> None:
+        """Send an (app) focus to the process."""
         await self.send_meta({"type": "focus"})
 
     async def start(self, width: int, height: int) -> None:
@@ -165,12 +170,20 @@ class AppService:
         self._task = asyncio.create_task(self.run())
 
     async def stop(self) -> None:
+        """Stop the process and wait for it to complete."""
         if self._task is not None:
             await self.send_meta({"type": "quit"})
             await self._task
             self._task = None
 
     async def run(self) -> None:
+        """Run the Textual app process.
+
+        !!! note
+
+            Do not call this manually, use `start`.
+
+        """
         META = b"M"
         DATA = b"D"
 
@@ -199,6 +212,7 @@ class AppService:
 
         try:
             ready = False
+            # Wait for prelude text, so we know it is a Textual app
             for _ in range(10):
                 if not (line := await stdout.readline()):
                     break
@@ -212,6 +226,7 @@ class AppService:
                     import sys
 
                     sys.stdout.write(error_text.decode("utf-8", "replace"))
+
             while True:
                 type_bytes = await stdout.readexactly(1)
                 size_bytes = await stdout.readexactly(4)
@@ -222,8 +237,6 @@ class AppService:
                     await self.on_data(payload)
                 elif type_bytes == META:
                     await self.on_meta(payload)
-                else:
-                    raise RuntimeError("unknown packet")
 
         except asyncio.IncompleteReadError:
             pass
@@ -242,9 +255,19 @@ class AppService:
             sys.stdout.write(error_text.decode("utf-8", "replace"))
 
     async def on_data(self, payload: bytes) -> None:
+        """Called when there is data.
+
+        Args:
+            payload: Data received from process.
+        """
         await self.remote_write_bytes(payload)
 
     async def on_meta(self, data: bytes) -> None:
+        """Called when there is a meta packet.
+
+        Args:
+            data: Encoded meta data.
+        """
         meta_data = json.loads(data)
 
         if meta_data["type"] == "exit":

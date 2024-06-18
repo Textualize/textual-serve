@@ -150,6 +150,14 @@ class Server:
         return context
 
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
+        """Handle the websocket that drives the remote process.
+
+        Args:
+            request: Request object.
+
+        Returns:
+            Websocket response.
+        """
         websocket = web.WebSocketResponse(heartbeat=15)
 
         def to_int(value: str, default: int) -> int:
