@@ -180,17 +180,24 @@ class Server:
             try:
                 async for message in websocket:
                     if message.type == TEXT:
-                        match message.json():
-                            case ["stdin", data]:
-                                await app_service.send_bytes(data.encode("utf-8"))
-                            case ["resize", {"width": width, "height": height}]:
-                                await app_service.set_terminal_size(width, height)
-                            case ["ping", data]:
-                                await app_service.pong(data)
-                            case ["blur"]:
-                                await app_service.blur()
-                            case ["focus"]:
-                                await app_service.focus()
+                        envelope = message.json()
+                        assert isinstance(envelope, list)
+                        type_ = envelope[0]
+                        if type_ == "stdin":
+                            data = envelope[1]
+                            await app_service.send_bytes(data.encode("utf-8"))
+                        elif type_ == "resize":
+                            data = envelope[1]
+                            await app_service.set_terminal_size(
+                                data["width"], data["height"]
+                            )
+                        elif type_ == "ping":
+                            await app_service.pong(data)
+                        elif type_ == "blur":
+                            await app_service.blur()
+                        elif type_ == "focus":
+                            await app_service.focus()
+
                     elif message.type == BINARY:
                         pass
             finally:

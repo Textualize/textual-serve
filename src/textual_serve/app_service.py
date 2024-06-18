@@ -244,6 +244,5 @@ class AppService:
     async def on_meta(self, data: bytes) -> None:
         meta_data = json.loads(data)
 
-        match meta_data:
-            case {"type": "exit"}:
-                await self.remote_close()
+        if meta_data["type"] == "exit":
+            await self.remote_close()
