@@ -91,9 +91,13 @@ class Server:
         self.console = Console()
 
     def initialize_logging(self) -> None:
+        """Initialize logging.
+
+        May be overridden in a subclass.
+        """
         FORMAT = "%(message)s"
         logging.basicConfig(
-            level="INFO",
+            level="DEBUG" if self.debug else "INFO",
             format=FORMAT,
             datefmt="[%X]",
             handlers=[
@@ -101,6 +105,7 @@ class Server:
                     show_path=False,
                     show_time=False,
                     rich_tracebacks=True,
+                    tracebacks_show_locals=True,
                     highlighter=LogHighlighter(),
                     console=self.console,
                 )
@@ -134,9 +139,18 @@ class Server:
         return app
 
     async def on_shutdown(self, app: web.Application) -> None:
-        pass
+        """Called on shutdown.
+
+        Args:
+            app: App instance.
+        """
 
     async def on_startup(self, app: web.Application) -> None:
+        """Called on startup.
+
+        Args:
+            app: App instance.
+        """
         self.console.print(f"Serving {self.command!r} on {self.public_url}")
         self.console.print("[bold yellow]Press Ctrl+C to quit")
 
@@ -165,6 +179,14 @@ class Server:
 
     @aiohttp_jinja2.template("app_index.html")
     async def handle_index(self, request: web.Request) -> dict[str, Any]:
+        """Serves the HTML for an app.
+
+        Args:
+            request: Request object.
+
+        Returns:
+            Template data.
+        """
         router = request.app.router
         font_size = to_int(request.query.get("fontsize", "16"), 16)
 
