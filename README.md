@@ -1,6 +1,6 @@
 # textual-serve
 
-Every [Textual](https://github.com/textualize/textual) application in now a web application.
+Every [Textual](https://github.com/textualize/textual) application is now a web application.
 
 With 3 lines of code, any Textual app can run in the browser.
 
