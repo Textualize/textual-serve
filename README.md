@@ -72,8 +72,7 @@ When you visit the app URL, the server launches an instance of your app in a sub
 
 This means that you can serve multiple Textual apps across all the CPUs on your system.
 
-!!! note
 
-    Textual-serve uses a custom protocol to communicate with Textual apps.
-    It *does not* simply run a shell in your browser.
-    This means that there is no way for a user of the app to do anything malicious.
+Note that Textual-serve uses a custom protocol to communicate with Textual apps.
+It *does not* simply run a shell in your browser.
+This means that there is no way for a user of the app to do anything malicious.
