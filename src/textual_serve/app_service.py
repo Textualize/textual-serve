@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import io
 import json
 import os
-from typing import Awaitable, Callable, Literal, TypeAlias
+from typing import Awaitable, Callable, Literal
 from asyncio.subprocess import Process
 import logging
 
@@ -11,8 +13,6 @@ from importlib.metadata import version
 import rich.repr
 
 log = logging.getLogger("textual-serve")
-
-Meta: TypeAlias = "dict[str, str | None | int | bool]"
 
 
 @rich.repr.auto
@@ -121,7 +121,7 @@ class AppService:
             return False
         return True
 
-    async def send_meta(self, data: Meta) -> bool:
+    async def send_meta(self, data: dict[str, str | None | int | bool]) -> bool:
         """Send meta information to process.
 
         Args:
