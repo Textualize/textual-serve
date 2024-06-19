@@ -177,16 +177,18 @@ class Server:
         self.initialize_logging()
 
         loop = asyncio.get_event_loop()
-        if not WINDOWS:
+        try:
             loop.add_signal_handler(signal.SIGINT, self.request_exit)
             loop.add_signal_handler(signal.SIGTERM, self.request_exit)
+        except NotImplementedError:
+            pass
         if self.debug:
             log.info("Running in debug mode. You may use textual dev tools.")
         web.run_app(
             self._make_app(),
             host=self.host,
             port=self.port,
-            handle_signals=WINDOWS,
+            handle_signals=False,
             loop=loop,
             print=lambda *args: None,
         )
@@ -210,6 +212,7 @@ class Server:
             return f"{self.public_url}{path}"
 
         def get_websocket_url(route: str, **args) -> str:
+            """Get a URL with a websocket prefix."""
             url = get_url(route, **args)
             return "ws:" + url.split(":", 1)[1]
 
@@ -225,7 +228,6 @@ class Server:
         context["application"] = {
             "name": self.title,
         }
-        print(context)
         return context
 
     async def _process_messages(
