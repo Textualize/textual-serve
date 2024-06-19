@@ -58,7 +58,7 @@ The command can be anything you would enter in the shell, as long as it results 
 Finally, call the `serve` method:
 
 ```python
-server.server()
+server.serve()
 ```
 
 You will now be able to click on the link in the terminal to run your app in a browser.
