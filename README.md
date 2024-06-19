@@ -1,6 +1,6 @@
 # textual-serve
 
-Textual serve turns your [Textual](https://github.com/textualize/textual) app in to a web application.
+Textual-serve turns your [Textual](https://github.com/textualize/textual) app in to a web application.
 
 
 ## Getting Started
