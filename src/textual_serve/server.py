@@ -204,13 +204,17 @@ class Server:
             path = router[route].url_for(**args)
             return f"{self.public_url}{path}"
 
+        def get_websocket_url(route: str, **args) -> str:
+            url = get_url(route, **args)
+            return "ws:" + url.split(":", 1)[1]
+
         context = {
             "font_size": font_size,
-            "app_websocket_url": get_url("websocket"),
+            "app_websocket_url": get_websocket_url("websocket"),
         }
         context["config"] = {
             "static": {
-                "url": get_url("static", filename="/") + "/",
+                "url": get_url("static", filename="/"),
             },
         }
         context["application"] = {
