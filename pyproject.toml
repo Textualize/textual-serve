@@ -1,9 +1,9 @@
 [project]
 name = "textual-serve"
 version = "0.1.0"
-description = "Add your description here"
+description = "Turn your Textual TUIs in to web applications"
 authors = [
-    { name = "Will McGugan", email = "willmcgugan@gmail.com" }
+    { name = "Will McGugan", email = "will@textualize.io" }
 ]
 dependencies = [
     "textual>=0.66.0",

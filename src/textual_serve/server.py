@@ -15,13 +15,22 @@ from aiohttp import WSMsgType
 from aiohttp.web_runner import GracefulExit
 import jinja2
 
+from importlib.metadata import version
+
 from rich.console import Console
+from rich.panel import Panel
 from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
 
 from .app_service import AppService
 
 log = logging.getLogger("textual-serve")
+
+LOGO = r"""[bold magenta]
+___ ____ _  _ ___ _  _ ____ _       ____ ____ ____ _  _ ____ 
+ |  |___  \/   |  |  | |__| |    __ [__  |___ |__/ |  | |___ 
+ |  |___ _/\_  |  |__| |  | |___    ___] |___ |  \  \/  |___ [not bold]VVVVV
+""".replace("VVVVV", f"v{version('textual-serve')}")
 
 
 class LogHighlighter(RegexHighlighter):
@@ -62,7 +71,7 @@ class Server:
         statics_path: str | os.PathLike = "./static",
         templates_path: str | os.PathLike = "./templates",
     ):
-        """_summary_
+        """
 
         Args:
             app_factory: A callable that returns a new App instance.
@@ -114,14 +123,13 @@ class Server:
 
     def request_exit(self) -> None:
         """Gracefully exit the app."""
-        log.info("Exit requested")
         raise GracefulExit()
 
     async def _make_app(self) -> web.Application:
         """Make the aiohttp web.Application.
 
         Returns:
-            New aiohttp application.
+            New aiohttp web application.
         """
         app = web.Application()
 
@@ -151,8 +159,10 @@ class Server:
         Args:
             app: App instance.
         """
+
+        self.console.print(LOGO, highlight=False)
         self.console.print(f"Serving {self.command!r} on {self.public_url}")
-        self.console.print("[bold yellow]Press Ctrl+C to quit")
+        self.console.print("\n[yellow]Press Ctrl+C to quit")
 
     def serve(self, debug: bool = False) -> None:
         """Serve the Textual application.
@@ -174,7 +184,7 @@ class Server:
             port=self.port,
             handle_signals=False,
             loop=loop,
-            print=None,
+            print=lambda *args: None,
         )
 
     @aiohttp_jinja2.template("app_index.html")
