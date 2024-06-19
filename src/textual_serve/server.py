@@ -15,7 +15,7 @@ from aiohttp import WSMsgType
 from aiohttp.web_runner import GracefulExit
 import jinja2
 
-from rich import print
+from rich.console import Console
 from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
 
@@ -88,6 +88,7 @@ class Server:
         base_path = (Path(__file__) / "../").resolve().absolute()
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
+        self.console = Console()
 
     def initialize_logging(self) -> None:
         FORMAT = "%(message)s"
@@ -101,6 +102,7 @@ class Server:
                     show_time=False,
                     rich_tracebacks=True,
                     highlighter=LogHighlighter(),
+                    console=self.console,
                 )
             ],
         )
@@ -126,10 +128,17 @@ class Server:
             web.static("/static", self.statics_path, show_index=True, name="static"),
         ]
         app.add_routes(ROUTES)
+
+        app.on_startup.append(self.on_startup)
+        app.on_shutdown.append(self.on_shutdown)
         return app
 
     async def on_shutdown(self, app: web.Application) -> None:
         pass
+
+    async def on_startup(self, app: web.Application) -> None:
+        self.console.print(f"Serving {self.command!r} on {self.public_url}")
+        self.console.print("[bold yellow]Press Ctrl+C to quit")
 
     def serve(self, debug: bool = False) -> None:
         """Serve the Textual application.
@@ -151,6 +160,7 @@ class Server:
             port=self.port,
             handle_signals=False,
             loop=loop,
+            print=None,
         )
 
     @aiohttp_jinja2.template("app_index.html")
