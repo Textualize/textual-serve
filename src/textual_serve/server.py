@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 import signal
+import sys
 
 from typing import Any
 
@@ -30,6 +31,9 @@ LOGO = r"""[bold magenta]___ ____ _  _ ___ _  _ ____ _       ____ ____ ____ _  _
  |  |___  \/   |  |  | |__| |    __ [__  |___ |__/ |  | |___ 
  |  |___ _/\_  |  |__| |  | |___    ___] |___ |  \  \/  |___ [not bold]VVVVV
 """.replace("VVVVV", f"v{version('textual-serve')}")
+
+
+WINDOWS = sys.platform == "WINDOWS"
 
 
 class LogHighlighter(RegexHighlighter):
@@ -173,15 +177,16 @@ class Server:
         self.initialize_logging()
 
         loop = asyncio.get_event_loop()
-        loop.add_signal_handler(signal.SIGINT, self.request_exit)
-        loop.add_signal_handler(signal.SIGTERM, self.request_exit)
+        if not WINDOWS:
+            loop.add_signal_handler(signal.SIGINT, self.request_exit)
+            loop.add_signal_handler(signal.SIGTERM, self.request_exit)
         if self.debug:
             log.info("Running in debug mode. You may use textual dev tools.")
         web.run_app(
             self._make_app(),
             host=self.host,
             port=self.port,
-            handle_signals=False,
+            handle_signals=WINDOWS,
             loop=loop,
             print=lambda *args: None,
         )
