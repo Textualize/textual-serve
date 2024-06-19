@@ -17,6 +17,7 @@ import jinja2
 
 from importlib.metadata import version
 
+from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
@@ -215,6 +216,7 @@ class Server:
         context["application"] = {
             "name": self.title,
         }
+        print(context)
         return context
 
     async def _process_messages(
