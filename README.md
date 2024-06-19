@@ -1,7 +1,32 @@
 # textual-serve
 
-Textual-serve turns your [Textual](https://github.com/textualize/textual) app in to a web application.
+Every [Textual](https://github.com/textualize/textual) application in now a web application.
 
+With 3 lines of code, any Textual app can run in the browser.
+
+
+
+
+<table>
+  <tr>
+    <td>
+      <p>This is <a href="https://github.com/darrenburns/posting">Posting</a> running in the terminal.</p>
+    </td>
+    <td>      
+      <img src="https://github.com/Textualize/textual-serve/assets/554369/14120e6e-bd8c-4620-a9fc-7cf41e3e994b" width="100%"/>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p>This is <a href="https://github.com/darrenburns/posting">Posting</a> running in the <em>browser</em>.</p>
+    </td>
+    <td>    
+      <img src="https://github.com/Textualize/textual-serve/assets/554369/cfa66f9b-02a0-4335-a127-e5a75c6f859d" width="100%"/>
+    </td>    
+  </tr>  
+</table>
+
+---
 
 ## Getting Started
 
@@ -16,13 +41,13 @@ pip install textual-serve
 
 ## Creating a server
 
-The API is super simple. First import the Server class:
+First import the Server class:
 
 ```python
 from textual_serve.server import Server
 ```
 
-Then create a server instance and pass the command that launches your Textual app:
+Then create a `Server` instance and pass the command that launches your Textual app:
 
 ```python
 server = Server("python -m textual")
@@ -30,7 +55,7 @@ server = Server("python -m textual")
 
 The command can be anything you would enter in the shell, as long as it results in a Textual app running.
 
-Finally, call the `serve` command:
+Finally, call the `serve` method:
 
 ```python
 server.server()
