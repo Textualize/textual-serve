@@ -214,7 +214,7 @@ class Server:
         }
         context["config"] = {
             "static": {
-                "url": get_url("static", filename="/"),
+                "url": get_url("static", filename="/") + "/",
             },
         }
         context["application"] = {
