@@ -7,7 +7,7 @@ Textual serve turns your [Textual](https://github.com/textualize/textual) app in
 
 First, [install (or upgrade) Textual](https://textual.textualize.io/getting_started/#installation).
 
-Then install `textual-serve` from Pypi:
+Then install `textual-serve` from PyPI:
 
 
 ```
@@ -55,11 +55,11 @@ The `Server` class has the following parameters:
 
 | parameter      | description                                                                        |
 | -------------- | ---------------------------------------------------------------------------------- |
-| command        | A shell command to launch a Textual app                                            |
-| host           | The host of the web application (defaults to "localhost")                          |
-| port           | The port for the web application (defaults to 8000)                                |
-| title          | The title show in the web app on load, leave as `None` to use the command          |
-| public_url     | The public URL, if the server is behind a proxy. `None` for the local URL          |
+| command        | A shell command to launch a Textual app.                                           |
+| host           | The host of the web application (defaults to "localhost").                         |
+| port           | The port for the web application (defaults to 8000).                               |
+| title          | The title show in the web app on load, leave as `None` to use the command.         |
+| public_url     | The public URL, if the server is behind a proxy. `None` for the local URL.         |
 | statics_path   | Path to statics folder, relative to server.py. Default uses directory in module.   |
 | templates_path | Path to templates folder, relative to server.py. Default uses directory in module. |
 
@@ -74,5 +74,11 @@ This means that you can serve multiple Textual apps across all the CPUs on your 
 
 
 Note that Textual-serve uses a custom protocol to communicate with Textual apps.
-It *does not* simply run a shell in your browser.
-This means that there is no way for a user of the app to do anything malicious.
+It *does not* simply expose a shell in your browser.
+There is no way for a malicious user to do anything the app-author didn't intend.
+
+## See also
+
+See also [textual-web](https://github.com/Textualize/textual-web) which serves Textual apps on a public URL.
+
+You can consider this project to essentially be a self-hosted equivalent of Textual-web.
