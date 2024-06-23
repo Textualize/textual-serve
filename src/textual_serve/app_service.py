@@ -3,12 +3,11 @@ from __future__ import annotations
 import asyncio
 import io
 import json
-import os
-from typing import Awaitable, Callable, Literal
-from asyncio.subprocess import Process
 import logging
-
+import os
+from asyncio.subprocess import Process
 from importlib.metadata import version
+from typing import Awaitable, Callable, Literal
 
 import rich.repr
 
@@ -154,7 +153,7 @@ class AppService:
                 "type": "resize",
                 "width": width,
                 "height": height,
-            }
+            },
         )
 
     async def blur(self) -> None:

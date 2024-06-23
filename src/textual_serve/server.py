@@ -1,27 +1,21 @@
 from __future__ import annotations
 
 import asyncio
-
 import logging
 import os
-from pathlib import Path
 import signal
 import sys
-
+from importlib.metadata import version
+from pathlib import Path
 from typing import Any
 
 import aiohttp_jinja2
-from aiohttp import web
-from aiohttp import WSMsgType
-from aiohttp.web_runner import GracefulExit
 import jinja2
-
-from importlib.metadata import version
-
-from rich import print
+from aiohttp import WSMsgType, web
+from aiohttp.web_runner import GracefulExit
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
+from rich.logging import RichHandler
 
 from .app_service import AppService
 
@@ -120,7 +114,7 @@ class Server:
                     tracebacks_show_locals=True,
                     highlighter=LogHighlighter(),
                     console=self.console,
-                )
+                ),
             ],
         )
 
@@ -231,7 +225,7 @@ class Server:
         return context
 
     async def _process_messages(
-        self, websocket: web.WebSocketResponse, app_service: AppService
+        self, websocket: web.WebSocketResponse, app_service: AppService,
     ) -> None:
         """Process messages from the websocket.
 
