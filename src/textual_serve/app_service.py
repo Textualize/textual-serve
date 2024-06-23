@@ -3,12 +3,11 @@ from __future__ import annotations
 import asyncio
 import io
 import json
-import os
-from typing import Awaitable, Callable, Literal
-from asyncio.subprocess import Process
 import logging
-
+import os
+from asyncio.subprocess import Process
 from importlib.metadata import version
+from typing import Awaitable, Callable, Literal
 
 import rich.repr
 
@@ -23,9 +22,9 @@ class AppService:
         self,
         command: str,
         *,
-        write_bytes: Callable[[bytes], Awaitable],
-        write_str: Callable[[str], Awaitable],
-        close: Callable[[], Awaitable],
+        write_bytes: Callable[[bytes], Awaitable[object]],
+        write_str: Callable[[str], Awaitable[object]],
+        close: Callable[[], Awaitable[object]],
         debug: bool = False,
     ) -> None:
         self.command = command
@@ -35,7 +34,7 @@ class AppService:
         self.debug = debug
 
         self._process: Process | None = None
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
 
@@ -154,7 +153,7 @@ class AppService:
                 "type": "resize",
                 "width": width,
                 "height": height,
-            }
+            },
         )
 
     async def blur(self) -> None:

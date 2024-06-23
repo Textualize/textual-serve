@@ -12,7 +12,7 @@ from textual.containers import VerticalScroll
 from textual.widgets import Input, Markdown
 
 
-class DictionaryApp(App):
+class DictionaryApp(App[None]):
     """Searches a dictionary API as-you-type."""
 
     CSS_PATH = "dictionary.tcss"
