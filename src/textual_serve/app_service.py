@@ -22,9 +22,9 @@ class AppService:
         self,
         command: str,
         *,
-        write_bytes: Callable[[bytes], Awaitable],
-        write_str: Callable[[str], Awaitable],
-        close: Callable[[], Awaitable],
+        write_bytes: Callable[[bytes], Awaitable[object]],
+        write_str: Callable[[str], Awaitable[object]],
+        close: Callable[[], Awaitable[object]],
         debug: bool = False,
     ) -> None:
         self.command = command
@@ -34,7 +34,7 @@ class AppService:
         self.debug = debug
 
         self._process: Process | None = None
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
 

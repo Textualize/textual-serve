@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import signal
 import sys
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import aiohttp_jinja2
 import jinja2
@@ -18,6 +17,11 @@ from rich.highlighter import RegexHighlighter
 from rich.logging import RichHandler
 
 from .app_service import AppService
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from _typeshed import StrPath
 
 log = logging.getLogger("textual-serve")
 
@@ -65,8 +69,8 @@ class Server:
         port: int = 8000,
         title: str | None = None,
         public_url: str | None = None,
-        statics_path: str | os.PathLike = "./static",
-        templates_path: str | os.PathLike = "./templates",
+        statics_path: StrPath = "./static",
+        templates_path: StrPath = "./templates",
     ):
         """
 
@@ -200,12 +204,12 @@ class Server:
         router = request.app.router
         font_size = to_int(request.query.get("fontsize", "16"), 16)
 
-        def get_url(route: str, **args) -> str:
+        def get_url(route: str, **args: str) -> str:
             """Get a URL from the aiohttp router."""
             path = router[route].url_for(**args)
             return f"{self.public_url}{path}"
 
-        def get_websocket_url(route: str, **args) -> str:
+        def get_websocket_url(route: str, **args: str) -> str:
             """Get a URL with a websocket prefix."""
             url = get_url(route, **args)
             return "ws:" + url.split(":", 1)[1]
