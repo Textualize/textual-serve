@@ -1,27 +1,22 @@
 from __future__ import annotations
 
 import asyncio
-
 import logging
 import os
-from pathlib import Path
 import signal
 import sys
-
+from importlib.metadata import version
+from pathlib import Path
 from typing import Any
 
 import aiohttp_jinja2
-from aiohttp import web
-from aiohttp import WSMsgType
-from aiohttp.web_runner import GracefulExit
 import jinja2
-
-from importlib.metadata import version
-
+from aiohttp import WSMsgType, web
+from aiohttp.web_runner import GracefulExit
 from rich import print
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
+from rich.logging import RichHandler
 
 from .app_service import AppService
 
@@ -30,7 +25,9 @@ log = logging.getLogger("textual-serve")
 LOGO = r"""[bold magenta]___ ____ _  _ ___ _  _ ____ _       ____ ____ ____ _  _ ____ 
  |  |___  \/   |  |  | |__| |    __ [__  |___ |__/ |  | |___ 
  |  |___ _/\_  |  |__| |  | |___    ___] |___ |  \  \/  |___ [not bold]VVVVV
-""".replace("VVVVV", f"v{version('textual-serve')}")
+""".replace(
+    "VVVVV", f"v{version('textual-serve')}"
+)
 
 
 WINDOWS = sys.platform == "WINDOWS"
@@ -92,6 +89,8 @@ class Server:
         if public_url is None:
             if self.port == 80:
                 self.public_url = f"http://{self.host}"
+            elif self.port == 443:
+                self.public_url = f"https://{self.host}"
             else:
                 self.public_url = f"http://{self.host}:{self.port}"
         else:
@@ -214,7 +213,11 @@ class Server:
         def get_websocket_url(route: str, **args) -> str:
             """Get a URL with a websocket prefix."""
             url = get_url(route, **args)
-            return "ws:" + url.split(":", 1)[1]
+
+            if self.public_url.startswith("https"):
+                return "wss:" + url.split(":", 1)[1]
+            else:
+                return "ws:" + url.split(":", 1)[1]
 
         context = {
             "font_size": font_size,
