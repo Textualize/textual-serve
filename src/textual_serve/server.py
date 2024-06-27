@@ -1,22 +1,27 @@
 from __future__ import annotations
 
 import asyncio
+
 import logging
 import os
+from pathlib import Path
 import signal
 import sys
-from importlib.metadata import version
-from pathlib import Path
+
 from typing import Any
 
 import aiohttp_jinja2
-import jinja2
-from aiohttp import WSMsgType, web
+from aiohttp import web
+from aiohttp import WSMsgType
 from aiohttp.web_runner import GracefulExit
+import jinja2
+
+from importlib.metadata import version
+
 from rich import print
 from rich.console import Console
-from rich.highlighter import RegexHighlighter
 from rich.logging import RichHandler
+from rich.highlighter import RegexHighlighter
 
 from .app_service import AppService
 
@@ -25,9 +30,7 @@ log = logging.getLogger("textual-serve")
 LOGO = r"""[bold magenta]___ ____ _  _ ___ _  _ ____ _       ____ ____ ____ _  _ ____ 
  |  |___  \/   |  |  | |__| |    __ [__  |___ |__/ |  | |___ 
  |  |___ _/\_  |  |__| |  | |___    ___] |___ |  \  \/  |___ [not bold]VVVVV
-""".replace(
-    "VVVVV", f"v{version('textual-serve')}"
-)
+""".replace("VVVVV", f"v{version('textual-serve')}")
 
 
 WINDOWS = sys.platform == "WINDOWS"
