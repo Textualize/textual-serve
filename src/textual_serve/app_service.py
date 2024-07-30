@@ -23,9 +23,9 @@ class AppService:
         self,
         command: str,
         *,
-        write_bytes: Callable[[bytes], Awaitable],
-        write_str: Callable[[str], Awaitable],
-        close: Callable[[], Awaitable],
+        write_bytes: Callable[[bytes], Awaitable[None]],
+        write_str: Callable[[str], Awaitable[None]],
+        close: Callable[[], Awaitable[None]],
         debug: bool = False,
     ) -> None:
         self.command = command
@@ -35,7 +35,7 @@ class AppService:
         self.debug = debug
 
         self._process: Process | None = None
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
 
@@ -269,6 +269,19 @@ class AppService:
             data: Encoded meta data.
         """
         meta_data = json.loads(data)
-
-        if meta_data["type"] == "exit":
-            await self.remote_close()
+        match meta_data["type"]:
+            case "exit":
+                await self.remote_close()
+            case "open_url":
+                payload = json.dumps(
+                    [
+                        "open_url",
+                        {
+                            "url": meta_data["url"],
+                            "new_tab": meta_data["new_tab"],
+                        },
+                    ]
+                )
+                await self.remote_write_str(payload)
+            case _:
+                pass
