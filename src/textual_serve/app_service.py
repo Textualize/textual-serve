@@ -284,3 +284,7 @@ class AppService:
                 ]
             )
             await self.remote_write_str(payload)
+        else:
+            log.warning(
+                f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
+            )
