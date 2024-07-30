@@ -268,20 +268,19 @@ class AppService:
         Args:
             data: Encoded meta data.
         """
-        meta_data = json.loads(data)
-        match meta_data["type"]:
-            case "exit":
-                await self.remote_close()
-            case "open_url":
-                payload = json.dumps(
-                    [
-                        "open_url",
-                        {
-                            "url": meta_data["url"],
-                            "new_tab": meta_data["new_tab"],
-                        },
-                    ]
-                )
-                await self.remote_write_str(payload)
-            case _:
-                pass
+        meta_data: dict[str, object] = json.loads(data)
+        meta_type = meta_data["type"]
+
+        if meta_type == "exit":
+            await self.remote_close()
+        elif meta_type == "open_url":
+            payload = json.dumps(
+                [
+                    "open_url",
+                    {
+                        "url": meta_data["url"],
+                        "new_tab": meta_data["new_tab"],
+                    },
+                ]
+            )
+            await self.remote_write_str(payload)
