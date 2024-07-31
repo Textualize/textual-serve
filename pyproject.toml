@@ -6,10 +6,10 @@ authors = [
     { name = "Will McGugan", email = "will@textualize.io" }
 ]
 dependencies = [
-    "textual>=0.66.0",
     "aiohttp>=3.9.5",
     "aiohttp-jinja2>=1.6",
     "jinja2>=3.1.4",
+    "textual>=0.66.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -20,7 +20,9 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "httpx",  # required to run the dictionary example
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
