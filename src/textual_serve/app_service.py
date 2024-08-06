@@ -30,9 +30,13 @@ class AppService:
     ) -> None:
         self.command = command
         self.remote_write_bytes = write_bytes
+        """Write bytes to the client browser websocket."""
         self.remote_write_str = write_str
+        """Write string to the client browser websocket."""
         self.remote_close = close
+        """Close the client browser websocket."""
         self.debug = debug
+        """Enable/disable debug mode."""
 
         self._process: Process | None = None
         self._task: asyncio.Task[None] | None = None
@@ -263,7 +267,7 @@ class AppService:
         await self.remote_write_bytes(payload)
 
     async def on_meta(self, data: bytes) -> None:
-        """Called when there is a meta packet.
+        """Called when there is a meta packet sent from the running app process.
 
         Args:
             data: Encoded meta data.
