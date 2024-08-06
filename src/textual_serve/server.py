@@ -140,6 +140,7 @@ class Server:
         ROUTES = [
             web.get("/", self.handle_index, name="index"),
             web.get("/ws", self.handle_websocket, name="websocket"),
+            web.get("/download/{key}", self.handle_download, name="download"),
             web.static("/static", self.statics_path, show_index=True, name="static"),
         ]
         app.add_routes(ROUTES)
@@ -147,6 +148,11 @@ class Server:
         app.on_startup.append(self.on_startup)
         app.on_shutdown.append(self.on_shutdown)
         return app
+
+    async def handle_download(self, request: web.Request) -> web.Response:
+        """Handle a download request."""
+        key = request.match_info["key"]
+        return web.Response()
 
     async def on_shutdown(self, app: web.Application) -> None:
         """Called on shutdown.
@@ -264,6 +270,8 @@ class Server:
 
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         """Handle the websocket that drives the remote process.
+
+        This is called when the browser connects to the websocket.
 
         Args:
             request: Request object.
