@@ -20,7 +20,7 @@ DOWNLOAD_TIMEOUT = 4
 
 @rich.repr.auto
 class AppService:
-    """Manages a Textual app process.
+    """Creates and manages a single Textual app subprocess.
 
     When a user connects to the websocket in their browser, a new AppService
     instance is created to manage the corresponding Textual app process.
@@ -36,6 +36,7 @@ class AppService:
         debug: bool = False,
     ) -> None:
         self.command = command
+        """The command to launch the Textual app subprocess."""
         self.remote_write_bytes = write_bytes
         """Write bytes to the client browser websocket."""
         self.remote_write_str = write_str
