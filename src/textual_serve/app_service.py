@@ -20,7 +20,11 @@ DOWNLOAD_TIMEOUT = 4
 
 @rich.repr.auto
 class AppService:
-    """Manage a Textual app service."""
+    """Manages a Textual app process.
+
+    When a user connects to the websocket in their browser, a new AppService
+    instance is created to manage the corresponding Textual app process.
+    """
 
     def __init__(
         self,
