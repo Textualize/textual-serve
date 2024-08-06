@@ -190,6 +190,7 @@ class AppService:
         """
         META = b"M"
         DATA = b"D"
+        PACKED = b"P"
 
         assert self._process is not None
         process = self._process
