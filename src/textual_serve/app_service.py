@@ -43,6 +43,17 @@ class AppService:
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
 
+        self._active_downloads: set[str] = set()
+        """Set of active deliveries (string 'delivery keys').
+        
+        When a delivery key is received in a meta packet, it is added to this set.
+        When the user hits the "/download/{key}" endpoint, we ensure the key is in
+        this set and start the download by requesting chunks from the app process.
+
+        When the download is complete, the app process sends a "deliver_file_end"
+        meta packet, and we remove the key from this set.
+        """
+
     @property
     def stdin(self) -> asyncio.StreamWriter:
         """The processes standard input stream."""
@@ -293,10 +304,30 @@ class AppService:
             )
             await self.remote_write_str(payload)
         elif meta_type == "deliver_file_start":
-            # Let's start the file transfer process
-            pass
+            try:
+                # Record this delivery key as available for download.
+                delivery_key = str(meta_data["key"])
+                self._active_downloads.add(delivery_key)
+            except KeyError:
+                log.error("Missing key in `deliver_file_start` meta packet")
+                return
+            else:
+                # Tell the browser front-end about the new delivery key,
+                # so that it may hit the "/download/{key}" endpoint
+                # to start the download.
+                json_string = json.dumps(["deliver_file_start", delivery_key])
+                await self.remote_write_str(json_string)
+
+                # TODO - Request chunks in the handler for "/download/{key}" instead
+                # await self.send_meta(
+                #     {
+                #         "type": "deliver_chunk_request",
+                #         "key": delivery_key,
+                #         "size": 1024 * 64,  # Request 64KB chunks
+                #     }
+                # )
         elif meta_type == "deliver_file_end":
-            # End the file transfer process
+            # End the file delivery process
             pass
         else:
             log.warning(
