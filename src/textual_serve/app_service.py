@@ -232,12 +232,13 @@ class AppService:
 
                     sys.stdout.write(error_text.decode("utf-8", "replace"))
 
+            readexactly = stdout.readexactly
+            int_from_bytes = int.from_bytes
             while True:
-                type_bytes = await stdout.readexactly(1)
-                size_bytes = await stdout.readexactly(4)
-                size = int.from_bytes(size_bytes, "big")
-                payload = await stdout.readexactly(size)
-
+                type_bytes = await readexactly(1)
+                size_bytes = await readexactly(4)
+                size = int_from_bytes(size_bytes, "big")
+                payload = await readexactly(size)
                 if type_bytes == DATA:
                     await self.on_data(payload)
                 elif type_bytes == META:
@@ -291,6 +292,12 @@ class AppService:
                 ]
             )
             await self.remote_write_str(payload)
+        elif meta_type == "deliver_file_start":
+            # Let's start the file transfer process
+            pass
+        elif meta_type == "deliver_file_end":
+            # End the file transfer process
+            pass
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
@@ -301,4 +308,13 @@ class AppService:
 
         Args:
             payload: Encoded packed data.
+        """
+
+        """
+        {
+        "type": "deliver_file_start",
+        "key": key,
+        "path": str(path.resolve()),
+        "open_method": open_method,
+        }
         """
