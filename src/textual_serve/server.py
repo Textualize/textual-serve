@@ -181,8 +181,10 @@ class Server:
             loop.add_signal_handler(signal.SIGTERM, self.request_exit)
         except NotImplementedError:
             pass
+
         if self.debug:
             log.info("Running in debug mode. You may use textual dev tools.")
+
         web.run_app(
             self._make_app(),
             host=self.host,
@@ -232,7 +234,7 @@ class Server:
     async def _process_messages(
         self, websocket: web.WebSocketResponse, app_service: AppService
     ) -> None:
-        """Process messages from the websocket.
+        """Process messages from the client browser websocket.
 
         Args:
             websocket: Websocket instance.
