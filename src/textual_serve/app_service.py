@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 import io
 import json
 import os
@@ -13,6 +14,8 @@ from importlib.metadata import version
 import rich.repr
 
 log = logging.getLogger("textual-serve")
+
+DOWNLOAD_TIMEOUT = 4
 
 
 @rich.repr.auto
@@ -43,8 +46,8 @@ class AppService:
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
 
-        self._active_downloads: set[str] = set()
-        """Set of active deliveries (string 'delivery keys').
+        self._active_downloads: dict[str, asyncio.Queue[bytes | None]] = {}
+        """Set of active deliveries (string 'delivery keys' -> queue of bytes objects).
         
         When a delivery key is received in a meta packet, it is added to this set.
         When the user hits the "/download/{key}" endpoint, we ensure the key is in
@@ -307,7 +310,7 @@ class AppService:
             try:
                 # Record this delivery key as available for download.
                 delivery_key = str(meta_data["key"])
-                self._active_downloads.add(delivery_key)
+                self._active_downloads[delivery_key] = asyncio.Queue[bytes | None]()
             except KeyError:
                 log.error("Missing key in `deliver_file_start` meta packet")
                 return
@@ -317,7 +320,6 @@ class AppService:
                 # to start the download.
                 json_string = json.dumps(["deliver_file_start", delivery_key])
                 await self.remote_write_str(json_string)
-
                 # TODO - Request chunks in the handler for "/download/{key}" instead
                 # await self.send_meta(
                 #     {
@@ -327,8 +329,17 @@ class AppService:
                 #     }
                 # )
         elif meta_type == "deliver_file_end":
-            # End the file delivery process
-            pass
+            try:
+                key = str(meta_data["key"])
+            except KeyError:
+                log.error("Missing key in `deliver_file_end` meta packet")
+                return
+            else:
+                queue = self._active_downloads[key]
+                await queue.put(None)
+                with suppress(asyncio.TimeoutError):
+                    await asyncio.wait_for(queue.join(), timeout=DOWNLOAD_TIMEOUT)
+                del self._active_downloads[key]
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
@@ -339,13 +350,4 @@ class AppService:
 
         Args:
             payload: Encoded packed data.
-        """
-
-        """
-        {
-        "type": "deliver_file_start",
-        "key": key,
-        "path": str(path.resolve()),
-        "open_method": open_method,
-        }
         """
