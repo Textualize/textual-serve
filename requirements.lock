@@ -50,7 +50,7 @@ pygments==2.18.0
 rich==13.7.1
     # via textual
     # via textual-serve
-textual==0.74.0
+textual==0.75.1
     # via textual-serve
 typing-extensions==4.12.2
     # via rich

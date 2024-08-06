@@ -274,6 +274,7 @@ class Server:
         width = to_int(request.query.get("width", "80"), 80)
         height = to_int(request.query.get("height", "24"), 24)
 
+        app_service: AppService | None = None
         try:
             await websocket.prepare(request)
             app_service = AppService(
@@ -296,6 +297,7 @@ class Server:
             log.exception(error)
 
         finally:
-            await app_service.stop()
+            if app_service is not None:
+                await app_service.stop()
 
         return websocket
