@@ -11,6 +11,7 @@ dependencies = [
     "jinja2>=3.1.4",
     "textual>=0.66.0",
     "msgpack>=1.0.8",
+    "rich>=13.7.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
