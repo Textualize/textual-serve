@@ -18,7 +18,6 @@ import jinja2
 
 from importlib.metadata import version
 
-from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter

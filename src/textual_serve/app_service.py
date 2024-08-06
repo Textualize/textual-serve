@@ -242,6 +242,8 @@ class AppService:
                     await self.on_data(payload)
                 elif type_bytes == META:
                     await self.on_meta(payload)
+                elif type_bytes == PACKED:
+                    await self.on_packed(payload)
 
         except asyncio.IncompleteReadError:
             pass
@@ -293,3 +295,10 @@ class AppService:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
             )
+
+    async def on_packed(self, payload: bytes) -> None:
+        """Called when there is a packed packet sent from the running app process.
+
+        Args:
+            payload: Encoded packed data.
+        """
