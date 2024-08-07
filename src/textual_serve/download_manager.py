@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Tuple
+from typing import AsyncGenerator, Tuple
 
 from textual_serve.app_service import AppService
 
@@ -68,7 +68,7 @@ class DownloadManager:
         """
         async with self.running_app_sessions_lock:
             if app_service not in self.running_app_sessions:
-                raise ValueError("App service not registered")
+                raise ValueError("App service not registered.")
 
         # Create a queue to write the received chunks to.
         self._active_downloads[(app_service.app_service_id, delivery_key)] = (
@@ -96,3 +96,48 @@ class DownloadManager:
             await asyncio.wait_for(queue.join(), timeout=DOWNLOAD_TIMEOUT)
 
         del self._active_downloads[download_key]
+
+    async def download(
+        self, app_service: AppService, delivery_key: str
+    ) -> AsyncGenerator[bytes, None]:
+        """Download a file from the given app service.
+
+        Args:
+            app_service: The app service to download from.
+            delivery_key: The delivery key to download.
+        """
+        download_key: DownloadKey = (app_service.app_service_id, delivery_key)
+        download_queue = self._active_downloads[download_key]
+
+        while True:
+            # Request a chunk from the app service.
+            await app_service.send_meta(
+                {
+                    "type": "deliver_chunk_request",
+                    "key": delivery_key,
+                    "size": 1024 * 64,
+                }
+            )
+
+            chunk = await download_queue.get()
+            if chunk is None:
+                # The app process has finished sending the file.
+                download_queue.task_done()
+                raise StopAsyncIteration
+            else:
+                download_queue.task_done()
+                yield chunk
+
+    async def chunk_received(
+        self, app_service: AppService, delivery_key: str, chunk: bytes
+    ) -> None:
+        """Handle a chunk received from the app service.
+
+        Args:
+            app_service: The app service that received the chunk.
+            delivery_key: The delivery key that the chunk was received for.
+            chunk: The chunk that was received.
+        """
+        download_key = (app_service.app_service_id, delivery_key)
+        queue = self._active_downloads[download_key]
+        await queue.put(chunk)

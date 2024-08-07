@@ -12,6 +12,7 @@ dependencies = [
     "textual>=0.66.0",
     "msgpack>=1.0.8",
     "rich",
+    "msgpack-types>=0.3.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"

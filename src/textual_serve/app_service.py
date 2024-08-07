@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import msgpack
 import asyncio
-from contextlib import suppress
 import io
 import json
 import os
@@ -54,7 +54,7 @@ class AppService:
         self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
-        self.download_manager = download_manager
+        self._download_manager = download_manager
 
     @property
     def stdin(self) -> asyncio.StreamWriter:
@@ -309,7 +309,7 @@ class AppService:
             try:
                 # Record this delivery key as available for download.
                 delivery_key = str(meta_data["key"])
-                await self.download_manager.start_download(delivery_key, self)
+                await self._download_manager.start_download(delivery_key, self)
             except KeyError:
                 log.error("Missing key in `deliver_file_start` meta packet")
                 return
@@ -330,12 +330,12 @@ class AppService:
         elif meta_type == "deliver_file_end":
             try:
                 delivery_key = str(meta_data["key"])
-                await self.download_manager.finish_download(delivery_key)
+                await self._download_manager.finish_download(self, delivery_key)
             except KeyError:
                 log.error("Missing key in `deliver_file_end` meta packet")
                 return
             else:
-                await self.download_manager.finish_download(delivery_key)
+                await self._download_manager.finish_download(self, delivery_key)
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
@@ -347,3 +347,9 @@ class AppService:
         Args:
             payload: Encoded packed data.
         """
+        unpacked = msgpack.unpackb(payload)
+        if unpacked[0] == "deliver_file_chunk":
+            # If we receive a chunk, hand it to the download manager to
+            # handle distribution to the browser.
+            _, delivery_key, chunk_bytes = unpacked
+            await self.download_manager.chunk_received(self, delivery_key, chunk)

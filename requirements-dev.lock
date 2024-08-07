@@ -56,6 +56,8 @@ mdurl==0.1.2
     # via markdown-it-py
 msgpack==1.0.8
     # via textual-serve
+msgpack-types==0.3.0
+    # via textual-serve
 multidict==6.0.5
     # via aiohttp
     # via yarl
