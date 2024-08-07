@@ -11,6 +11,7 @@
 -e file:.
 aiohttp==3.9.5
     # via aiohttp-jinja2
+    # via textual-dev
     # via textual-serve
 aiohttp-jinja2==1.6
     # via textual-serve
@@ -25,6 +26,8 @@ attrs==23.2.0
 certifi==2024.7.4
     # via httpcore
     # via httpx
+click==8.1.7
+    # via textual-dev
 exceptiongroup==1.2.2
     # via anyio
 frozenlist==1.4.1
@@ -55,6 +58,7 @@ mdit-py-plugins==0.4.1
 mdurl==0.1.2
     # via markdown-it-py
 msgpack==1.0.8
+    # via textual-dev
     # via textual-serve
 msgpack-types==0.3.0
     # via textual-serve
@@ -70,11 +74,14 @@ sniffio==1.3.1
     # via anyio
     # via httpx
 textual==0.75.1
+    # via textual-dev
     # via textual-serve
+textual-dev==1.5.1
 typing-extensions==4.12.2
     # via anyio
     # via rich
     # via textual
+    # via textual-dev
 uc-micro-py==1.0.3
     # via linkify-it-py
 yarl==1.9.4

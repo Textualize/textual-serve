@@ -307,6 +307,7 @@ class AppService:
             )
             await self.remote_write_str(payload)
         elif meta_type == "deliver_file_start":
+            log.info("deliver_file_start, %s", meta_data)
             try:
                 # Record this delivery key as available for download.
                 delivery_key = str(meta_data["key"])
@@ -325,14 +326,6 @@ class AppService:
                 # to start the download.
                 json_string = json.dumps(["deliver_file_start", delivery_key])
                 await self.remote_write_str(json_string)
-                # TODO - Request chunks in the handler for "/download/{key}" instead
-                # await self.send_meta(
-                #     {
-                #         "type": "deliver_chunk_request",
-                #         "key": delivery_key,
-                #         "size": 1024 * 64,  # Request 64KB chunks
-                #     }
-                # )
         elif meta_type == "deliver_file_end":
             try:
                 delivery_key = str(meta_data["key"])

@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import asyncio
 from contextlib import suppress
 from dataclasses import dataclass, field
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TYPE_CHECKING
 
-from textual_serve.app_service import AppService
+if TYPE_CHECKING:
+    from textual_serve.app_service import AppService
 
 log = logging.getLogger("textual-serve")
 
@@ -13,7 +16,7 @@ DOWNLOAD_TIMEOUT = 4
 
 @dataclass
 class Download:
-    app_service: AppService
+    app_service: "AppService"
     delivery_key: str
     file_name: str
     open_method: str
@@ -45,7 +48,7 @@ class DownloadManager:
     async def create_download(
         self,
         *,
-        app_service: AppService,
+        app_service: "AppService",
         delivery_key: str,
         file_name: str,
         open_method: str,
@@ -93,6 +96,7 @@ class DownloadManager:
         """Download a file from the given app service.
 
         Args:
+            app_service: The app service to download from.
             delivery_key: The delivery key to download.
         """
 
@@ -129,7 +133,7 @@ class DownloadManager:
         download = self._active_downloads[delivery_key]
         await download.incoming_chunks.put(chunk)
 
-    async def _get_app_service(self, delivery_key: str) -> AppService:
+    async def _get_app_service(self, delivery_key: str) -> "AppService":
         """Get the app service that the given delivery key is linked to.
 
         Args:

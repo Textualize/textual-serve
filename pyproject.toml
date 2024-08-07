@@ -24,7 +24,9 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "httpx",  # required to run the dictionary example
+    "httpx",
+    "textual-dev>=1.5.1",
+    # required to run the dictionary example
 ]
 
 [tool.hatch.metadata]
