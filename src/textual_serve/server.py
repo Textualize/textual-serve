@@ -152,11 +152,28 @@ class Server:
         app.on_shutdown.append(self.on_shutdown)
         return app
 
-    async def handle_download(self, request: web.Request) -> web.Response:
+    async def handle_download(self, request: web.Request) -> web.StreamResponse:
         """Handle a download request."""
         key = request.match_info["key"]
-        # TODO
-        return web.Response()
+
+        download_meta = await self.download_manager.get_download_metadata(key)
+        download_stream = self.download_manager.download(key)
+
+        response = web.StreamResponse()
+        response.headers["Content-Type"] = "application/octet-stream"
+        disposition = (
+            "attachment" if download_meta.open_method == "download" else "inline"
+        )
+        response.headers["Content-Disposition"] = (
+            f"{disposition}; filename={download_meta.file_name}"
+        )
+        await response.prepare(request)
+
+        async for chunk in download_stream:
+            await response.write(chunk)
+
+        await response.write_eof()
+        return response
 
     async def on_shutdown(self, app: web.Application) -> None:
         """Called on shutdown.

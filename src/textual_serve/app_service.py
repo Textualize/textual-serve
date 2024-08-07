@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 import msgpack
 import asyncio
@@ -309,7 +310,12 @@ class AppService:
             try:
                 # Record this delivery key as available for download.
                 delivery_key = str(meta_data["key"])
-                await self._download_manager.start_download(delivery_key, self)
+                await self._download_manager.create_download(
+                    app_service=self,
+                    delivery_key=delivery_key,
+                    file_name=Path(str(meta_data["path"])).name,
+                    open_method=str(meta_data["open_method"]),
+                )
             except KeyError:
                 log.error("Missing key in `deliver_file_start` meta packet")
                 return
@@ -330,12 +336,12 @@ class AppService:
         elif meta_type == "deliver_file_end":
             try:
                 delivery_key = str(meta_data["key"])
-                await self._download_manager.finish_download(self, delivery_key)
+                await self._download_manager.finish_download(delivery_key)
             except KeyError:
                 log.error("Missing key in `deliver_file_end` meta packet")
                 return
             else:
-                await self._download_manager.finish_download(self, delivery_key)
+                await self._download_manager.finish_download(delivery_key)
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
@@ -352,4 +358,4 @@ class AppService:
             # If we receive a chunk, hand it to the download manager to
             # handle distribution to the browser.
             _, delivery_key, chunk_bytes = unpacked
-            await self.download_manager.chunk_received(self, delivery_key, chunk_bytes)
+            await self._download_manager.chunk_received(self, delivery_key, chunk_bytes)
