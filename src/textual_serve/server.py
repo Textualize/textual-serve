@@ -156,7 +156,11 @@ class Server:
         """Handle a download request."""
         key = request.match_info["key"]
 
-        download_meta = await self.download_manager.get_download_metadata(key)
+        try:
+            download_meta = await self.download_manager.get_download_metadata(key)
+        except KeyError:
+            raise web.HTTPNotFound(text=f"Download with key {key!r} not found")
+
         download_stream = self.download_manager.download(key)
 
         response = web.StreamResponse()
