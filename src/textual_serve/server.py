@@ -22,6 +22,8 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
 
+from textual_serve.download_manager import DownloadManager
+
 from .app_service import AppService
 
 log = logging.getLogger("textual-serve")
@@ -100,6 +102,7 @@ class Server:
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
         self.console = Console()
+        self.download_manager = DownloadManager()
 
     def initialize_logging(self) -> None:
         """Initialize logging.
@@ -152,6 +155,7 @@ class Server:
     async def handle_download(self, request: web.Request) -> web.Response:
         """Handle a download request."""
         key = request.match_info["key"]
+        # TODO
         return web.Response()
 
     async def on_shutdown(self, app: web.Application) -> None:
@@ -292,6 +296,7 @@ class Server:
                 write_bytes=websocket.send_bytes,
                 write_str=websocket.send_str,
                 close=websocket.close,
+                download_manager=self.download_manager,
                 debug=self.debug,
             )
             await app_service.start(width, height)

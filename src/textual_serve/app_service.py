@@ -10,12 +10,13 @@ from asyncio.subprocess import Process
 import logging
 
 from importlib.metadata import version
+import uuid
 
 import rich.repr
 
-log = logging.getLogger("textual-serve")
+from textual_serve.download_manager import DownloadManager
 
-DOWNLOAD_TIMEOUT = 4
+log = logging.getLogger("textual-serve")
 
 
 @rich.repr.auto
@@ -33,8 +34,11 @@ class AppService:
         write_bytes: Callable[[bytes], Awaitable[None]],
         write_str: Callable[[str], Awaitable[None]],
         close: Callable[[], Awaitable[None]],
+        download_manager: DownloadManager,
         debug: bool = False,
     ) -> None:
+        self.app_service_id: str = uuid.uuid4().hex
+        """The unique ID of this running app service."""
         self.command = command
         """The command to launch the Textual app subprocess."""
         self.remote_write_bytes = write_bytes
@@ -50,17 +54,7 @@ class AppService:
         self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
-
-        self._active_downloads: dict[str, asyncio.Queue[bytes | None]] = {}
-        """Set of active deliveries (string 'delivery keys' -> queue of bytes objects).
-        
-        When a delivery key is received in a meta packet, it is added to this set.
-        When the user hits the "/download/{key}" endpoint, we ensure the key is in
-        this set and start the download by requesting chunks from the app process.
-
-        When the download is complete, the app process sends a "deliver_file_end"
-        meta packet, and we remove the key from this set.
-        """
+        self.download_manager = download_manager
 
     @property
     def stdin(self) -> asyncio.StreamWriter:
@@ -315,7 +309,7 @@ class AppService:
             try:
                 # Record this delivery key as available for download.
                 delivery_key = str(meta_data["key"])
-                self._active_downloads[delivery_key] = asyncio.Queue[bytes | None]()
+                await self.download_manager.start_download(delivery_key, self)
             except KeyError:
                 log.error("Missing key in `deliver_file_start` meta packet")
                 return
@@ -335,16 +329,13 @@ class AppService:
                 # )
         elif meta_type == "deliver_file_end":
             try:
-                key = str(meta_data["key"])
+                delivery_key = str(meta_data["key"])
+                await self.download_manager.finish_download(delivery_key)
             except KeyError:
                 log.error("Missing key in `deliver_file_end` meta packet")
                 return
             else:
-                queue = self._active_downloads[key]
-                await queue.put(None)
-                with suppress(asyncio.TimeoutError):
-                    await asyncio.wait_for(queue.join(), timeout=DOWNLOAD_TIMEOUT)
-                del self._active_downloads[key]
+                await self.download_manager.finish_download(delivery_key)
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
