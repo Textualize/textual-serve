@@ -352,4 +352,4 @@ class AppService:
             # If we receive a chunk, hand it to the download manager to
             # handle distribution to the browser.
             _, delivery_key, chunk_bytes = unpacked
-            await self.download_manager.chunk_received(self, delivery_key, chunk)
+            await self.download_manager.chunk_received(self, delivery_key, chunk_bytes)
