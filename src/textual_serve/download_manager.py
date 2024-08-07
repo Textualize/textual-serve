@@ -1,8 +1,11 @@
 import asyncio
 from contextlib import suppress
+import logging
 from typing import Tuple
 
 from textual_serve.app_service import AppService
+
+log = logging.getLogger("textual-serve")
 
 DOWNLOAD_TIMEOUT = 4
 
@@ -80,8 +83,16 @@ class DownloadManager:
             delivery_key: The delivery key to finish the download for.
         """
         download_key = (app_service.app_service_id, delivery_key)
-        queue = self._active_downloads[download_key]
+        try:
+            queue = self._active_downloads[download_key]
+        except KeyError:
+            log.error(f"Download {download_key!r} not found")
+            return
+
+        # Shut down the download queue. Attempt graceful shutdown, but
+        # timeout after DOWNLOAD_TIMEOUT seconds if the queue doesn't clear.
         await queue.put(None)
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(queue.join(), timeout=DOWNLOAD_TIMEOUT)
+
         del self._active_downloads[download_key]
