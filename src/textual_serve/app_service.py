@@ -20,7 +20,6 @@ from textual_serve.download_manager import DownloadManager
 log = logging.getLogger("textual-serve")
 
 
-@rich.repr.auto
 class AppService:
     """Creates and manages a single Textual app subprocess.
 
@@ -347,8 +346,9 @@ class AppService:
             payload: Encoded packed data.
         """
         unpacked = msgpack.unpackb(payload)
-        if unpacked[0] == "deliver_file_chunk":
+        if unpacked[0] == "deliver_chunk":
             # If we receive a chunk, hand it to the download manager to
             # handle distribution to the browser.
             _, delivery_key, chunk_bytes = unpacked
-            await self._download_manager.chunk_received(self, delivery_key, chunk_bytes)
+            print("unpacked chunk:" + str(unpacked))
+            await self._download_manager.chunk_received(delivery_key, chunk_bytes)

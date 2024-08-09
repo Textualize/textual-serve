@@ -9,7 +9,7 @@ dependencies = [
     "aiohttp>=3.9.5",
     "aiohttp-jinja2>=1.6",
     "jinja2>=3.1.4",
-    "textual>=0.66.0",
+    "textual[syntax] @ file:///Users/darrenburns/Code/textual-serve/../textual",
     "msgpack>=1.0.8",
     "rich",
     "msgpack-types>=0.3.0",

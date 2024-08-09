@@ -115,13 +115,15 @@ class DownloadManager:
             )
 
             chunk = await incoming_chunks.get()
-            if chunk is None:
+            if not chunk:
                 # The app process has finished sending the file.
                 incoming_chunks.task_done()
-                raise StopAsyncIteration
+                break
             else:
                 incoming_chunks.task_done()
                 yield chunk
+
+            await asyncio.sleep(0.01)
 
     async def chunk_received(self, delivery_key: str, chunk: bytes) -> None:
         """Handle a chunk received from the app service for a download.

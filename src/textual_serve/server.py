@@ -154,6 +154,7 @@ class Server:
 
     async def handle_download(self, request: web.Request) -> web.StreamResponse:
         """Handle a download request."""
+        print("in download handler")
         key = request.match_info["key"]
 
         try:
@@ -161,7 +162,7 @@ class Server:
         except KeyError:
             raise web.HTTPNotFound(text=f"Download with key {key!r} not found")
 
-        download_stream = self.download_manager.download(key)
+        print("download_meta:", download_meta)
 
         response = web.StreamResponse()
         response.headers["Content-Type"] = "application/octet-stream"
@@ -169,13 +170,18 @@ class Server:
             "attachment" if download_meta.open_method == "download" else "inline"
         )
         response.headers["Content-Disposition"] = (
-            f"{disposition}; filename={download_meta.file_name}"
+            f"inline; filename={download_meta.file_name}"
         )
+
         await response.prepare(request)
 
-        async for chunk in download_stream:
+        async for chunk in self.download_manager.download(key):
+            print("writing chunk to response stream")
             await response.write(chunk)
+            await response.drain()
+            await asyncio.sleep(0.01)
 
+        print("=== writing eof")
         await response.write_eof()
         return response
 
