@@ -61,7 +61,6 @@ msgpack==1.0.8
     # via textual-dev
     # via textual-serve
 msgpack-types==0.3.0
-    # via textual-serve
 multidict==6.0.5
     # via aiohttp
     # via yarl
