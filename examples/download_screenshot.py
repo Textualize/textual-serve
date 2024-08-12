@@ -15,7 +15,6 @@ class ScreenshotApp(App[None]):
         self.action_deliver_screenshot()
 
     def action_deliver_screenshot(self) -> None:
-        print("Delivering screenshot action!")
         filename = self.save_screenshot("screenshot.svg")
         self.deliver_text(filename)
 

@@ -56,7 +56,7 @@ pygments==2.18.0
 rich==13.7.1
     # via textual
     # via textual-serve
-textual @ file:///Users/darrenburns/Code/textual-serve/../textual
+textual @ file:///Users/darrenburns/code/textual-serve/../textual
     # via textual-serve
 tree-sitter==0.20.4
     # via textual

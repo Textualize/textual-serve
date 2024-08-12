@@ -313,8 +313,9 @@ class AppService:
                 await self._download_manager.create_download(
                     app_service=self,
                     delivery_key=delivery_key,
-                    file_name=Path(str(meta_data["path"])).name,
-                    open_method=str(meta_data["open_method"]),
+                    file_name=Path(meta_data["path"]).name,
+                    open_method=meta_data["open_method"],
+                    mime_type=meta_data["mime_type"],
                 )
             except KeyError:
                 log.error("Missing key in `deliver_file_start` meta packet")
@@ -325,15 +326,6 @@ class AppService:
                 # to start the download.
                 json_string = json.dumps(["deliver_file_start", delivery_key])
                 await self.remote_write_str(json_string)
-        elif meta_type == "deliver_file_end":
-            try:
-                delivery_key = str(meta_data["key"])
-                await self._download_manager.finish_download(delivery_key)
-            except KeyError:
-                log.error("Missing key in `deliver_file_end` meta packet")
-                return
-            else:
-                await self._download_manager.finish_download(delivery_key)
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
@@ -350,5 +342,4 @@ class AppService:
             # If we receive a chunk, hand it to the download manager to
             # handle distribution to the browser.
             _, delivery_key, chunk_bytes = unpacked
-            print("unpacked chunk:" + str(unpacked))
             await self._download_manager.chunk_received(delivery_key, chunk_bytes)
