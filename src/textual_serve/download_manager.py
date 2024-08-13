@@ -22,6 +22,9 @@ class Download:
     open_method: str
     mime_type: str
     encoding: str | None = None
+    """The encoding of the content.
+    Will be None if the content is binary.
+    """
     incoming_chunks: asyncio.Queue[bytes | None] = field(default_factory=asyncio.Queue)
 
 

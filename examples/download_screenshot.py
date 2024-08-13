@@ -1,3 +1,4 @@
+import io
 from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -15,8 +16,10 @@ class ScreenshotApp(App[None]):
         self.action_deliver_screenshot()
 
     def action_deliver_screenshot(self) -> None:
-        filename = self.save_screenshot("screenshot.svg")
-        self.deliver_text(filename)
+        screenshot_string = self.export_screenshot()
+        string_io = io.StringIO(screenshot_string)
+        print(isinstance(string_io, io.TextIOBase))
+        self.deliver_text(string_io)
 
 
 app = ScreenshotApp()
