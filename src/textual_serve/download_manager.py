@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
 from dataclasses import dataclass, field
 import logging
 from typing import AsyncGenerator, TYPE_CHECKING
@@ -36,7 +35,6 @@ class DownloadManager:
     """
 
     def __init__(self):
-        self._active_downloads_lock = asyncio.Lock()
         self._active_downloads: dict[str, Download] = {}
         """A dictionary of active downloads.
 
@@ -66,15 +64,14 @@ class DownloadManager:
             file_name: The name of the file to download.
             open_method: The method to open the file with.
         """
-        async with self._active_downloads_lock:
-            self._active_downloads[delivery_key] = Download(
-                app_service,
-                delivery_key,
-                file_name,
-                open_method,
-                mime_type,
-                encoding,
-            )
+        self._active_downloads[delivery_key] = Download(
+            app_service,
+            delivery_key,
+            file_name,
+            open_method,
+            mime_type,
+            encoding,
+        )
 
     async def download(self, delivery_key: str) -> AsyncGenerator[bytes, None]:
         """Download a file from the given app service.
@@ -102,12 +99,7 @@ class DownloadManager:
             if not chunk:
                 # Empty chunk - the app process has finished sending the file.
                 incoming_chunks.task_done()
-                with suppress(asyncio.TimeoutError):
-                    await asyncio.wait_for(
-                        download.incoming_chunks.join(), timeout=DOWNLOAD_TIMEOUT
-                    )
-                async with self._active_downloads_lock:
-                    del self._active_downloads[delivery_key]
+                del self._active_downloads[delivery_key]
                 break
             else:
                 incoming_chunks.task_done()
@@ -129,14 +121,11 @@ class DownloadManager:
         Args:
             delivery_key: The delivery key to get the app service for.
         """
-        async with self._active_downloads_lock:
-            for key in self._active_downloads.keys():
-                if key == delivery_key:
-                    return self._active_downloads[key].app_service
-            else:
-                raise ValueError(
-                    f"No active download for delivery key {delivery_key!r}"
-                )
+        for key in self._active_downloads.keys():
+            if key == delivery_key:
+                return self._active_downloads[key].app_service
+        else:
+            raise ValueError(f"No active download for delivery key {delivery_key!r}")
 
     async def get_download_metadata(self, delivery_key: str) -> Download:
         """Get the metadata for a download.
@@ -144,5 +133,4 @@ class DownloadManager:
         Args:
             delivery_key: The delivery key to get the metadata for.
         """
-        async with self._active_downloads_lock:
-            return self._active_downloads[delivery_key]
+        return self._active_downloads[delivery_key]
