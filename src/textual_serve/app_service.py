@@ -316,6 +316,7 @@ class AppService:
                     file_name=Path(meta_data["path"]).name,
                     open_method=meta_data["open_method"],
                     mime_type=meta_data["mime_type"],
+                    encoding=meta_data["encoding"],
                 )
             except KeyError:
                 log.error("Missing key in `deliver_file_start` meta packet")
