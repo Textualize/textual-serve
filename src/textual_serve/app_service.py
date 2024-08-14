@@ -13,8 +13,6 @@ import logging
 from importlib.metadata import version
 import uuid
 
-import rich.repr
-
 from textual_serve.download_manager import DownloadManager
 
 log = logging.getLogger("textual-serve")
@@ -342,5 +340,5 @@ class AppService:
         if unpacked[0] == "deliver_chunk":
             # If we receive a chunk, hand it to the download manager to
             # handle distribution to the browser.
-            _, delivery_key, chunk_bytes = unpacked
-            await self._download_manager.chunk_received(delivery_key, chunk_bytes)
+            _, delivery_key, chunk = unpacked
+            await self._download_manager.chunk_received(delivery_key, chunk)

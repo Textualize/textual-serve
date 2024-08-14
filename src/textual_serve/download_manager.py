@@ -108,7 +108,7 @@ class DownloadManager:
                 incoming_chunks.task_done()
                 yield chunk
 
-    async def chunk_received(self, delivery_key: str, chunk: bytes) -> None:
+    async def chunk_received(self, delivery_key: str, chunk: bytes | str) -> None:
         """Handle a chunk received from the app service for a download.
 
         Args:
@@ -116,6 +116,8 @@ class DownloadManager:
             chunk: The chunk that was received.
         """
         download = self._active_downloads[delivery_key]
+        if isinstance(chunk, str):
+            chunk = chunk.encode(download.encoding or "utf-8")
         await download.incoming_chunks.put(chunk)
 
     async def _get_app_service(self, delivery_key: str) -> "AppService":

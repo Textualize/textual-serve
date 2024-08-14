@@ -18,7 +18,9 @@ class ScreenshotApp(App[None]):
     def action_deliver_screenshot(self) -> None:
         screenshot_string = self.export_screenshot()
         string_io = io.StringIO(screenshot_string)
-        self.deliver_text(string_io)
+        self.deliver_text(
+            string_io, save_filename="screenshot.svg", open_method="browser"
+        )
 
 
 app = ScreenshotApp()

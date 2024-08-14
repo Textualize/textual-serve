@@ -170,7 +170,9 @@ class Server:
             content_type += f"; charset={download_meta.encoding}"
 
         response.headers["Content-Type"] = content_type
-        disposition = "inline" if download_meta.open_method == "download" else "inline"
+        disposition = (
+            "inline" if download_meta.open_method == "browser" else "attachment"
+        )
         response.headers["Content-Disposition"] = (
             f"{disposition}; filename={download_meta.file_name}"
         )
