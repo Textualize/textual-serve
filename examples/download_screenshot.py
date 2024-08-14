@@ -18,7 +18,6 @@ class ScreenshotApp(App[None]):
     def action_deliver_screenshot(self) -> None:
         screenshot_string = self.export_screenshot()
         string_io = io.StringIO(screenshot_string)
-        print(isinstance(string_io, io.TextIOBase))
         self.deliver_text(string_io)
 
 
