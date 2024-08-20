@@ -1,7 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
 
-import msgpack
 import asyncio
 import io
 import json
@@ -14,6 +13,7 @@ from importlib.metadata import version
 import uuid
 
 from textual_serve.download_manager import DownloadManager
+from textual_serve._binary_encode import load as binary_load
 
 log = logging.getLogger("textual-serve")
 
@@ -336,7 +336,7 @@ class AppService:
         Args:
             payload: Encoded packed data.
         """
-        unpacked = msgpack.unpackb(payload)
+        unpacked = binary_load(payload)
         if unpacked[0] == "deliver_chunk":
             # If we receive a chunk, hand it to the download manager to
             # handle distribution to the browser.
