@@ -180,7 +180,6 @@ class Server:
 
         async for chunk in self.download_manager.download(key):
             await response.write(chunk)
-            await response.drain()
 
         await response.write_eof()
         return response
