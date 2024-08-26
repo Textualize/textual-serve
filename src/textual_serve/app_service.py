@@ -304,7 +304,7 @@ class AppService:
             )
             await self.remote_write_str(payload)
         elif meta_type == "deliver_file_start":
-            log.info("deliver_file_start, %s", meta_data)
+            log.debug("deliver_file_start, %s", meta_data)
             try:
                 # Record this delivery key as available for download.
                 delivery_key = str(meta_data["key"])
