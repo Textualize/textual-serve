@@ -90,7 +90,7 @@ class DownloadManager:
 
         while True:
             # Request a chunk from the app service.
-            await app_service.send_meta(
+            send_result = await app_service.send_meta(
                 {
                     "type": "deliver_chunk_request",
                     "key": delivery_key,
@@ -98,7 +98,23 @@ class DownloadManager:
                 }
             )
 
-            chunk = await incoming_chunks.get()
+            if not send_result:
+                log.warning(
+                    "Download {delivery_key!r} failed to request chunk from app service"
+                )
+                del self._active_downloads[delivery_key]
+                break
+
+            try:
+                chunk = await asyncio.wait_for(incoming_chunks.get(), DOWNLOAD_TIMEOUT)
+            except asyncio.TimeoutError:
+                log.warning(
+                    "Download %r failed to receive chunk from app service within %r seconds",
+                    delivery_key,
+                    DOWNLOAD_TIMEOUT,
+                )
+                chunk = None
+
             if not chunk:
                 # Empty chunk - the app process has finished sending the file.
                 incoming_chunks.task_done()
