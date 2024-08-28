@@ -43,20 +43,13 @@ mdurl==0.1.2
 multidict==6.0.5
     # via aiohttp
     # via yarl
-platformdirs==4.2.2
-    # via textual
 pygments==2.18.0
     # via rich
 rich==13.7.1
     # via textual
     # via textual-serve
-textual @ file:///Users/darrenburns/code/textual-serve/../textual
+textual==0.78.0
     # via textual-serve
-tree-sitter==0.20.4
-    # via textual
-    # via tree-sitter-languages
-tree-sitter-languages==1.10.2
-    # via textual
 typing-extensions==4.12.2
     # via rich
     # via textual
