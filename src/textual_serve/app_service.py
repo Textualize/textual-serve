@@ -187,6 +187,10 @@ class AppService:
     async def stop(self) -> None:
         """Stop the process and wait for it to complete."""
         if self._task is not None:
+            await self._download_manager.cancel_app_downloads(
+                app_service_id=self.app_service_id
+            )
+
             await self.send_meta({"type": "quit"})
             await self._task
             self._task = None

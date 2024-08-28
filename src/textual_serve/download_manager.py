@@ -116,7 +116,8 @@ class DownloadManager:
                 chunk = None
 
             if not chunk:
-                # Empty chunk - the app process has finished sending the file.
+                # Empty chunk - the app process has finished sending the file
+                # or the download has been cancelled.
                 incoming_chunks.task_done()
                 del self._active_downloads[delivery_key]
                 break
@@ -131,7 +132,14 @@ class DownloadManager:
             delivery_key: The delivery key that the chunk was received for.
             chunk: The chunk that was received.
         """
-        download = self._active_downloads[delivery_key]
+
+        download = self._active_downloads.get(delivery_key)
+        if not download:
+            # The download may have been cancelled - e.g. the websocket
+            # was closed before the download could complete.
+            log.debug("Chunk received for cancelled download %r", delivery_key)
+            return
+
         if isinstance(chunk, str):
             chunk = chunk.encode(download.encoding or "utf-8")
         await download.incoming_chunks.put(chunk)
@@ -155,3 +163,13 @@ class DownloadManager:
             delivery_key: The delivery key to get the metadata for.
         """
         return self._active_downloads[delivery_key]
+
+    async def cancel_app_downloads(self, app_service_id: str) -> None:
+        """Cancel all downloads for the given app service.
+
+        Args:
+            app_service_id: The app service ID to cancel downloads for.
+        """
+        for download in self._active_downloads.values():
+            if download.app_service.app_service_id == app_service_id:
+                await download.incoming_chunks.put(None)
