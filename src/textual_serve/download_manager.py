@@ -17,15 +17,30 @@ DOWNLOAD_CHUNK_SIZE = 1024 * 64  # 64 KB
 @dataclass
 class Download:
     app_service: "AppService"
+    """The app service that the download is associated with."""
+
     delivery_key: str
+    """Key which identifies the download."""
+
     file_name: str
+    """The name of the file to download. This will be used to set
+    the Content-Disposition filename."""
+
     open_method: str
+    """The method to open the file with. "browser" or "download"."""
+
     mime_type: str
+    """The mime type of the content."""
+
     encoding: str | None = None
     """The encoding of the content.
     Will be None if the content is binary.
     """
+
     incoming_chunks: asyncio.Queue[bytes | None] = field(default_factory=asyncio.Queue)
+    """A queue of incoming chunks for the download.
+    Chunks are sent from the app service to the download handler
+    via this queue."""
 
 
 class DownloadManager:
@@ -80,7 +95,6 @@ class DownloadManager:
         """Download a file from the given app service.
 
         Args:
-            app_service: The app service to download from.
             delivery_key: The delivery key to download.
         """
 
