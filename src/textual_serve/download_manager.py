@@ -37,6 +37,9 @@ class Download:
     Will be None if the content is binary.
     """
 
+    name: str | None = None
+    """Optional name set bt the client."""
+
     incoming_chunks: asyncio.Queue[bytes | None] = field(default_factory=asyncio.Queue)
     """A queue of incoming chunks for the download.
     Chunks are sent from the app service to the download handler
@@ -52,7 +55,7 @@ class DownloadManager:
     running app processes.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._active_downloads: dict[str, Download] = {}
         """A dictionary of active downloads.
 
@@ -73,6 +76,7 @@ class DownloadManager:
         open_method: str,
         mime_type: str,
         encoding: str | None = None,
+        name: str | None = None,
     ) -> None:
         """Prepare for a new download.
 
@@ -91,6 +95,7 @@ class DownloadManager:
             open_method,
             mime_type,
             encoding,
+            name=name,
         )
 
     async def download(self, delivery_key: str) -> AsyncGenerator[bytes, None]:
@@ -111,6 +116,7 @@ class DownloadManager:
                     "type": "deliver_chunk_request",
                     "key": delivery_key,
                     "size": DOWNLOAD_CHUNK_SIZE,
+                    "name": download.name,
                 }
             )
 
