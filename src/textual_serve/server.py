@@ -18,10 +18,11 @@ import jinja2
 
 from importlib.metadata import version
 
-from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
+
+from textual_serve.download_manager import DownloadManager
 
 from .app_service import AppService
 
@@ -101,6 +102,7 @@ class Server:
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
         self.console = Console()
+        self.download_manager = DownloadManager()
 
     def initialize_logging(self) -> None:
         """Initialize logging.
@@ -141,6 +143,7 @@ class Server:
         ROUTES = [
             web.get("/", self.handle_index, name="index"),
             web.get("/ws", self.handle_websocket, name="websocket"),
+            web.get("/download/{key}", self.handle_download, name="download"),
             web.static("/static", self.statics_path, show_index=True, name="static"),
         ]
         app.add_routes(ROUTES)
@@ -148,6 +151,38 @@ class Server:
         app.on_startup.append(self.on_startup)
         app.on_shutdown.append(self.on_shutdown)
         return app
+
+    async def handle_download(self, request: web.Request) -> web.StreamResponse:
+        """Handle a download request."""
+        key = request.match_info["key"]
+
+        try:
+            download_meta = await self.download_manager.get_download_metadata(key)
+        except KeyError:
+            raise web.HTTPNotFound(text=f"Download with key {key!r} not found")
+
+        response = web.StreamResponse()
+        mime_type = download_meta.mime_type
+
+        content_type = mime_type
+        if download_meta.encoding:
+            content_type += f"; charset={download_meta.encoding}"
+
+        response.headers["Content-Type"] = content_type
+        disposition = (
+            "inline" if download_meta.open_method == "browser" else "attachment"
+        )
+        response.headers["Content-Disposition"] = (
+            f"{disposition}; filename={download_meta.file_name}"
+        )
+
+        await response.prepare(request)
+
+        async for chunk in self.download_manager.download(key):
+            await response.write(chunk)
+
+        await response.write_eof()
+        return response
 
     async def on_shutdown(self, app: web.Application) -> None:
         """Called on shutdown.
@@ -182,8 +217,10 @@ class Server:
             loop.add_signal_handler(signal.SIGTERM, self.request_exit)
         except NotImplementedError:
             pass
+
         if self.debug:
             log.info("Running in debug mode. You may use textual dev tools.")
+
         web.run_app(
             self._make_app(),
             host=self.host,
@@ -233,7 +270,7 @@ class Server:
     async def _process_messages(
         self, websocket: web.WebSocketResponse, app_service: AppService
     ) -> None:
-        """Process messages from the websocket.
+        """Process messages from the client browser websocket.
 
         Args:
             websocket: Websocket instance.
@@ -264,6 +301,8 @@ class Server:
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         """Handle the websocket that drives the remote process.
 
+        This is called when the browser connects to the websocket.
+
         Args:
             request: Request object.
 
@@ -275,6 +314,7 @@ class Server:
         width = to_int(request.query.get("width", "80"), 80)
         height = to_int(request.query.get("height", "24"), 24)
 
+        app_service: AppService | None = None
         try:
             await websocket.prepare(request)
             app_service = AppService(
@@ -282,6 +322,7 @@ class Server:
                 write_bytes=websocket.send_bytes,
                 write_str=websocket.send_str,
                 close=websocket.close,
+                download_manager=self.download_manager,
                 debug=self.debug,
             )
             await app_service.start(width, height)
@@ -297,6 +338,7 @@ class Server:
             log.exception(error)
 
         finally:
-            await app_service.stop()
+            if app_service is not None:
+                await app_service.stop()
 
         return websocket

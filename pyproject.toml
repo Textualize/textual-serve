@@ -9,6 +9,7 @@ dependencies = [
     "aiohttp>=3.9.5",
     "aiohttp-jinja2>=1.6",
     "jinja2>=3.1.4",
+    "rich",
     "textual>=0.66.0",
 ]
 readme = "README.md"
@@ -21,7 +22,9 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "httpx",  # required to run the dictionary example
+    "httpx",
+    # required to run the dictionary example
+    "textual-dev>=1.5.1",
 ]
 
 [tool.hatch.metadata]

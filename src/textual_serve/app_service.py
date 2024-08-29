@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 import asyncio
 import io
@@ -9,15 +10,20 @@ from asyncio.subprocess import Process
 import logging
 
 from importlib.metadata import version
+import uuid
 
-import rich.repr
+from textual_serve.download_manager import DownloadManager
+from textual_serve._binary_encode import load as binary_load
 
 log = logging.getLogger("textual-serve")
 
 
-@rich.repr.auto
 class AppService:
-    """Manage a Textual app service."""
+    """Creates and manages a single Textual app subprocess.
+
+    When a user connects to the websocket in their browser, a new AppService
+    instance is created to manage the corresponding Textual app process.
+    """
 
     def __init__(
         self,
@@ -26,18 +32,27 @@ class AppService:
         write_bytes: Callable[[bytes], Awaitable[None]],
         write_str: Callable[[str], Awaitable[None]],
         close: Callable[[], Awaitable[None]],
+        download_manager: DownloadManager,
         debug: bool = False,
     ) -> None:
+        self.app_service_id: str = uuid.uuid4().hex
+        """The unique ID of this running app service."""
         self.command = command
+        """The command to launch the Textual app subprocess."""
         self.remote_write_bytes = write_bytes
+        """Write bytes to the client browser websocket."""
         self.remote_write_str = write_str
+        """Write string to the client browser websocket."""
         self.remote_close = close
+        """Close the client browser websocket."""
         self.debug = debug
+        """Enable/disable debug mode."""
 
         self._process: Process | None = None
         self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
         self._exit_event = asyncio.Event()
+        self._download_manager = download_manager
 
     @property
     def stdin(self) -> asyncio.StreamWriter:
@@ -172,6 +187,10 @@ class AppService:
     async def stop(self) -> None:
         """Stop the process and wait for it to complete."""
         if self._task is not None:
+            await self._download_manager.cancel_app_downloads(
+                app_service_id=self.app_service_id
+            )
+
             await self.send_meta({"type": "quit"})
             await self._task
             self._task = None
@@ -186,6 +205,7 @@ class AppService:
         """
         META = b"M"
         DATA = b"D"
+        PACKED = b"P"
 
         assert self._process is not None
         process = self._process
@@ -227,16 +247,19 @@ class AppService:
 
                     sys.stdout.write(error_text.decode("utf-8", "replace"))
 
+            readexactly = stdout.readexactly
+            int_from_bytes = int.from_bytes
             while True:
-                type_bytes = await stdout.readexactly(1)
-                size_bytes = await stdout.readexactly(4)
-                size = int.from_bytes(size_bytes, "big")
-                payload = await stdout.readexactly(size)
-
+                type_bytes = await readexactly(1)
+                size_bytes = await readexactly(4)
+                size = int_from_bytes(size_bytes, "big")
+                payload = await readexactly(size)
                 if type_bytes == DATA:
                     await self.on_data(payload)
                 elif type_bytes == META:
                     await self.on_meta(payload)
+                elif type_bytes == PACKED:
+                    await self.on_packed(payload)
 
         except asyncio.IncompleteReadError:
             pass
@@ -263,7 +286,7 @@ class AppService:
         await self.remote_write_bytes(payload)
 
     async def on_meta(self, data: bytes) -> None:
-        """Called when there is a meta packet.
+        """Called when there is a meta packet sent from the running app process.
 
         Args:
             data: Encoded meta data.
@@ -284,7 +307,42 @@ class AppService:
                 ]
             )
             await self.remote_write_str(payload)
+        elif meta_type == "deliver_file_start":
+            log.debug("deliver_file_start, %s", meta_data)
+            try:
+                # Record this delivery key as available for download.
+                delivery_key = str(meta_data["key"])
+                await self._download_manager.create_download(
+                    app_service=self,
+                    delivery_key=delivery_key,
+                    file_name=Path(meta_data["path"]).name,
+                    open_method=meta_data["open_method"],
+                    mime_type=meta_data["mime_type"],
+                    encoding=meta_data["encoding"],
+                )
+            except KeyError:
+                log.error("Missing key in `deliver_file_start` meta packet")
+                return
+            else:
+                # Tell the browser front-end about the new delivery key,
+                # so that it may hit the "/download/{key}" endpoint
+                # to start the download.
+                json_string = json.dumps(["deliver_file_start", delivery_key])
+                await self.remote_write_str(json_string)
         else:
             log.warning(
                 f"Unknown meta type: {meta_type!r}. You may need to update `textual-serve`."
             )
+
+    async def on_packed(self, payload: bytes) -> None:
+        """Called when there is a packed packet sent from the running app process.
+
+        Args:
+            payload: Encoded packed data.
+        """
+        unpacked = binary_load(payload)
+        if unpacked[0] == "deliver_chunk":
+            # If we receive a chunk, hand it to the download manager to
+            # handle distribution to the browser.
+            _, delivery_key, chunk = unpacked
+            await self._download_manager.chunk_received(delivery_key, chunk)
