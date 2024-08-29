@@ -81,6 +81,8 @@ class DownloadManager:
             delivery_key: The delivery key to start the download for.
             file_name: The name of the file to download.
             open_method: The method to open the file with.
+            mime_type: The mime type of the content.
+            encoding: The encoding of the content or None if the content is binary.
         """
         self._active_downloads[delivery_key] = Download(
             app_service,
