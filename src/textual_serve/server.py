@@ -109,12 +109,13 @@ class Server:
         self.download_manager = DownloadManager()
         
         # Handle reverse proxies with a public URL path prefix.
-        public_url_path = urlparse(public_url).path if public_url else ""
-        if public_url_path and not public_url_path.endswith("/"):
-            public_url_path += "/"
-        if public_url_path.startswith("/"):
-            public_url_path = public_url_path[1:]
-        self._path_prefix = public_url_path
+        if public_url:
+            parsed_url = urlparse(public_url)
+            public_url_path = parsed_url.path
+            normalized_path = urljoin("/", public_url_path + "/").lstrip("/")
+        else:
+            normalized_path = ""
+        self._path_prefix = normalized_path
 
     def initialize_logging(self) -> None:
         """Initialize logging.
