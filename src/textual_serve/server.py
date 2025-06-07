@@ -24,6 +24,8 @@ from rich.highlighter import RegexHighlighter
 
 from textual_serve.download_manager import DownloadManager
 
+from urllib.parse import urlparse
+
 from .app_service import AppService
 
 log = logging.getLogger("textual-serve")
@@ -104,7 +106,15 @@ class Server:
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
         self.console = Console()
-        self.download_manager = DownloadManager(public_url=self.public_url)
+        self.download_manager = DownloadManager()
+        
+        # Handle reverse proxies with a public URL path prefix.
+        public_url_path = urlparse(public_url).path if public_url else ""
+        if public_url_path and not public_url_path.endswith("/"):
+            public_url_path += "/"
+        if public_url_path.startswith("/"):
+            public_url_path = public_url_path[1:]
+        self._path_prefix = public_url_path
 
     def initialize_logging(self) -> None:
         """Initialize logging.
@@ -262,6 +272,7 @@ class Server:
         context = {
             "font_size": font_size,
             "app_websocket_url": get_websocket_url("websocket"),
+            "app_path_prefix": self._path_prefix,
         }
         context["config"] = {
             "static": {
