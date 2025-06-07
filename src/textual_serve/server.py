@@ -104,7 +104,7 @@ class Server:
         self.statics_path = base_path / statics_path
         self.templates_path = base_path / templates_path
         self.console = Console()
-        self.download_manager = DownloadManager()
+        self.download_manager = DownloadManager(public_url=self.public_url)
 
     def initialize_logging(self) -> None:
         """Initialize logging.

@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 import logging
 from typing import AsyncGenerator, TYPE_CHECKING
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from textual_serve.app_service import AppService
@@ -55,7 +56,15 @@ class DownloadManager:
     running app processes.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, public_url: str | None = None) -> None:
+        """
+
+        Args:
+            public_url: The public URL of the server, used to construct download URLs.
+        """
+        self._path_prefix = urlparse(public_url).path if public_url else ""
+
+
         self._active_downloads: dict[str, Download] = {}
         """A dictionary of active downloads.
 
