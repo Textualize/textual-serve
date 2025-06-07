@@ -24,7 +24,7 @@ from rich.highlighter import RegexHighlighter
 
 from textual_serve.download_manager import DownloadManager
 
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from .app_service import AppService
 
