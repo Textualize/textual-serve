@@ -1,0 +1,7 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python-envs.pythonProjects": [],
+    "python.defaultInterpreterPath": "/home/wchao/miniconda3/envs/mcp/bin/python",
+    "python.pythonPath": "/home/wchao/miniconda3/envs/mcp/bin/python"
+}

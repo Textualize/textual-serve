@@ -1,3 +1,5 @@
+### This is a custom fork of textual-serve for Crossman only. Other use cases will not be supported by this fork. Please use the upstream packages accordingly.
+
 # textual-serve
 
 Every [Textual](https://github.com/textualize/textual) application is now a web application.

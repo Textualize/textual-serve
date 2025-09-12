@@ -1,9 +1,12 @@
 [project]
-name = "textual-serve"
-version = "1.1.2"
-description = "Turn your Textual TUIs in to web applications"
+name = "textual-serve-xman-only"
+version = "1.1.2rc1"
+description = "A custom fork of textual-serve for Crossman only. Other use cases will not be supported by this fork. Please use the upstream packages accordingly."
 authors = [
-    { name = "Will McGugan", email = "will@textualize.io" }
+    { name = "Will McGugan" }
+]
+maintainers = [
+  { name = "Chai Chaoweeraprasit / Crossman", email = "jaywee1115@gmail.com" }
 ]
 dependencies = [
     "aiohttp>=3.9.5",
@@ -14,11 +17,13 @@ dependencies = [
 ]
 readme = "README.md"
 requires-python = ">= 3.9"
-license = "MIT"
+license = { file = "LICENSE" }
 
 [project.urls]
-Homepage = "https://github.com/Textualize/textual-serve"
-
+Homepage = "https://github.com/wchao1115/textual-serve"
+Source = "https://github.com/wchao1115/textual-serve"
+Issues = "https://github.com/wchao1115/textual-serve/issues"
+Upstream = "https://github.com/Textualize/textual-serve"
 
 [build-system]
 requires = ["hatchling>=1.26.1"]
