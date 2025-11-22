@@ -1,26 +1,21 @@
 from __future__ import annotations
 
 import asyncio
-
 import logging
 import os
-from pathlib import Path
 import signal
 import sys
-
+from importlib.metadata import version
+from pathlib import Path
 from typing import Any
 
 import aiohttp_jinja2
-from aiohttp import web
-from aiohttp import WSMsgType
-from aiohttp.web_runner import GracefulExit
 import jinja2
-
-from importlib.metadata import version
-
+from aiohttp import WSMsgType, web
+from aiohttp.web_runner import GracefulExit
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.highlighter import RegexHighlighter
+from rich.logging import RichHandler
 
 from textual_serve.download_manager import DownloadManager
 
@@ -204,6 +199,34 @@ class Server:
         self.console.print(f"Serving {self.command!r} on {self.public_url}")
         self.console.print("\n[cyan]Press Ctrl+C to quit")
 
+    async def _make_server(self) -> Any:
+        """Make the aiohttp web server.
+
+        Returns:
+            New aiohttp web server.
+        """
+        app = await self._make_app()
+        runner = web.AppRunner(app, handle_signals=False)
+        await runner.setup()
+        try:
+            site = web.TCPSite(runner, self.host, self.port)
+            await site.start()
+            try:
+                loop = asyncio.get_running_loop()
+                loop.add_signal_handler(signal.SIGINT, self.request_exit)
+                loop.add_signal_handler(signal.SIGTERM, self.request_exit)
+            except NotImplementedError:
+                pass
+            # Keep the server running indefinitely
+            try:
+                await asyncio.Event().wait()
+            except GracefulExit:
+                # Gracefully handle exit signal
+                pass
+        finally:
+            # Cleanup
+            await runner.cleanup()
+
     def serve(self, debug: bool = False) -> None:
         """Serve the Textual application.
 
@@ -213,27 +236,7 @@ class Server:
         self.debug = debug
         self.initialize_logging()
 
-        try:
-            loop = asyncio.get_event_loop()
-        except Exception:
-            loop = asyncio.new_event_loop()
-        try:
-            loop.add_signal_handler(signal.SIGINT, self.request_exit)
-            loop.add_signal_handler(signal.SIGTERM, self.request_exit)
-        except NotImplementedError:
-            pass
-
-        if self.debug:
-            log.info("Running in debug mode. You may use textual dev tools.")
-
-        web.run_app(
-            self._make_app(),
-            host=self.host,
-            port=self.port,
-            handle_signals=False,
-            loop=loop,
-            print=lambda *args: None,
-        )
+        asyncio.run(self._make_server())
 
     @aiohttp_jinja2.template("app_index.html")
     async def handle_index(self, request: web.Request) -> dict[str, Any]:

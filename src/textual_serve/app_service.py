@@ -1,21 +1,25 @@
 from __future__ import annotations
-from pathlib import Path
 
 import asyncio
 import io
 import json
-import os
-from typing import Awaitable, Callable, Literal
-from asyncio.subprocess import Process
 import logging
-
-from importlib.metadata import version
+import os
+import sys
 import uuid
+from asyncio.subprocess import Process
+from importlib.metadata import version
+from pathlib import Path
+from typing import Awaitable, Callable, Literal
 
-from textual_serve.download_manager import DownloadManager
 from textual_serve._binary_encode import load as binary_load
+from textual_serve._compat import cached_property
+from textual_serve.download_manager import DownloadManager
 
 log = logging.getLogger("textual-serve")
+
+# `asyncio.get_event_loop()` is deprecated since Python 3.10:
+_ASYNCIO_GET_EVENT_LOOP_IS_DEPRECATED = sys.version_info >= (3, 10, 0)
 
 
 class AppService:
@@ -51,8 +55,12 @@ class AppService:
         self._process: Process | None = None
         self._task: asyncio.Task[None] | None = None
         self._stdin: asyncio.StreamWriter | None = None
-        self._exit_event = asyncio.Event()
+
         self._download_manager = download_manager
+
+    @cached_property
+    def _exit_event(self) -> asyncio.Event:
+        return asyncio.Event()
 
     @property
     def stdin(self) -> asyncio.StreamWriter:
