@@ -7,10 +7,18 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css?family=Roboto%20Mono"
     />
-    <script src="{{ config.static.url }}js/textual.js"></script>
     <style>
-      body {
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
         background: #0c181f;
+      }
+
+      .textual-terminal {
+        width: 100%;
+        height: 100%;
       }
 
       .dialog-container {
@@ -153,8 +161,12 @@
     <div
       id="terminal"
       class="textual-terminal"
-      data-session-websocket-url="{{ app_websocket_url }}"
-      data-font-size="{{ font_size }}"
     ></div>
+    <script type="module">
+      import { startTerminal } from "{{ config.static.url }}js/textual.js";
+
+      const container = document.getElementById("terminal");
+      startTerminal(container, '{{ app_websocket_url }}', {{ font_size }});
+    </script>
   </body>
 </html>

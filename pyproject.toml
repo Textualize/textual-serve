@@ -16,9 +16,15 @@ readme = "README.md"
 requires-python = ">= 3.9"
 license = "MIT"
 
+[dependency-groups]
+dev = [
+    "httpx",
+    # required to run the dictionary example
+    "textual-dev>=1.5.1",
+] 
+
 [project.urls]
 Homepage = "https://github.com/Textualize/textual-serve"
-
 
 [build-system]
 requires = ["hatchling>=1.26.1"]
@@ -26,14 +32,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
-
-[tool.rye]
-managed = true
-dev-dependencies = [
-    "httpx",
-    # required to run the dictionary example
-    "textual-dev>=1.5.1",
-]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/textual_serve"]

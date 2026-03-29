@@ -322,6 +322,8 @@ class Server:
 
         width = to_int(request.query.get("width", "80"), 80)
         height = to_int(request.query.get("height", "24"), 24)
+        cell_width = to_int(request.query.get("cellWidth", "0"), 0)
+        cell_height = to_int(request.query.get("cellHeight", "0"), 0)
 
         app_service: AppService | None = None
         try:
@@ -334,7 +336,12 @@ class Server:
                 download_manager=self.download_manager,
                 debug=self.debug,
             )
-            await app_service.start(width, height)
+            await app_service.start(
+                width,
+                height,
+                cell_width=cell_width,
+                cell_height=cell_height,
+            )
             try:
                 await self._process_messages(websocket, app_service)
             finally:

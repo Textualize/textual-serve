@@ -5,7 +5,7 @@ import asyncio
 import io
 import json
 import os
-from typing import Awaitable, Callable, Literal
+from typing import Awaitable, Callable, Literal, Optional
 from asyncio.subprocess import Process
 import logging
 
@@ -60,12 +60,20 @@ class AppService:
         assert self._stdin is not None
         return self._stdin
 
-    def _build_environment(self, width: int = 80, height: int = 24) -> dict[str, str]:
+    def _build_environment(
+        self,
+        width: int = 80,
+        height: int = 24,
+        cell_width: Optional[int] = None,
+        cell_height: Optional[int] = None,
+    ) -> dict[str, str]:
         """Build an environment dict for the App subprocess.
 
         Args:
             width: Initial width.
             height: Initial height.
+            cell_width: Width of a terminal cell in pixels.
+            cell_height: Height of a terminal cell in pixels.
 
         Returns:
             A environment dict.
@@ -78,19 +86,35 @@ class AppService:
         environment["TERM_PROGRAM_VERSION"] = version("textual-serve")
         environment["COLUMNS"] = str(width)
         environment["ROWS"] = str(height)
+        if cell_width and cell_height:
+            environment["TEXTUAL_CELL_WIDTH"] = str(cell_width)
+            environment["TEXTUAL_CELL_HEIGHT"] = str(cell_height)
         if self.debug:
             environment["TEXTUAL"] = "debug,devtools"
             environment["TEXTUAL_LOG"] = "textual.log"
         return environment
 
-    async def _open_app_process(self, width: int = 80, height: int = 24) -> Process:
+    async def _open_app_process(
+        self,
+        width: int = 80,
+        height: int = 24,
+        cell_width: Optional[int] = None,
+        cell_height: Optional[int] = None,
+    ) -> Process:
         """Open a process to run the app.
 
         Args:
             width: Width of the terminal.
             height: height of the terminal.
+            cell_width: Width of a terminal cell in pixels.
+            cell_height: Height of a terminal cell in pixels.
         """
-        environment = self._build_environment(width=width, height=height)
+        environment = self._build_environment(
+            width=width,
+            height=height,
+            cell_width=cell_width,
+            cell_height=cell_height,
+        )
         self._process = process = await asyncio.create_subprocess_shell(
             self.command,
             stdin=asyncio.subprocess.PIPE,
@@ -180,8 +204,19 @@ class AppService:
         """Send an (app) focus to the process."""
         await self.send_meta({"type": "focus"})
 
-    async def start(self, width: int, height: int) -> None:
-        await self._open_app_process(width, height)
+    async def start(
+        self,
+        width: int,
+        height: int,
+        cell_width: Optional[int] = None,
+        cell_height: Optional[int] = None,
+    ) -> None:
+        await self._open_app_process(
+            width,
+            height,
+            cell_width=cell_width,
+            cell_height=cell_height,
+        )
         self._task = asyncio.create_task(self.run())
 
     async def stop(self) -> None:
