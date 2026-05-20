@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 
 import logging
 import os
+import secrets
+import time
 from pathlib import Path
 import signal
 import sys
@@ -35,6 +39,31 @@ LOGO = r"""[bold magenta]___ ____ _  _ ___ _  _ ____ _       ____ ____ ____ _  _
 
 
 WINDOWS = sys.platform == "WINDOWS"
+
+AUTH_COOKIE_NAME = "textual_serve_auth"
+AUTH_COOKIE_MAX_AGE = 86400 * 30  # 30 days
+
+
+def _make_secret() -> str:
+    """Generate a random secret for HMAC signing."""
+    return secrets.token_hex(32)
+
+
+def _sign_cookie(secret: str, payload: str) -> str:
+    """Sign a payload with HMAC-SHA256. Returns 'payload.hexdigest'."""
+    mac = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256)
+    return f"{payload}.{mac.hexdigest()}"
+
+
+def _verify_cookie(secret: str, signed: str) -> str | None:
+    """Verify a signed cookie value. Returns payload if valid, None otherwise."""
+    if "." not in signed:
+        return None
+    payload, _, sig = signed.rpartition(".")
+    expected = _sign_cookie(secret, payload)
+    if hmac.compare_digest(expected, signed):
+        return payload
+    return None
 
 
 class LogHighlighter(RegexHighlighter):
@@ -74,6 +103,7 @@ class Server:
         public_url: str | None = None,
         statics_path: str | os.PathLike = "./static",
         templates_path: str | os.PathLike = "./templates",
+        password: str | None = None,
     ):
         """
 
@@ -105,6 +135,10 @@ class Server:
         self.templates_path = base_path / templates_path
         self.console = Console()
         self.download_manager = DownloadManager()
+        self._password = password
+        self._auth_secret: str | None = None
+        if password is not None:
+            self._auth_secret = _make_secret()
 
     def initialize_logging(self) -> None:
         """Initialize logging.
@@ -132,13 +166,86 @@ class Server:
         """Gracefully exit the app."""
         raise GracefulExit()
 
+    def _check_auth(self, request: web.Request) -> bool:
+        """Return True if the request has a valid auth cookie."""
+        if self._password is None or self._auth_secret is None:
+            return True
+        signed = request.cookies.get(AUTH_COOKIE_NAME, "")
+        payload = _verify_cookie(self._auth_secret, signed)
+        if payload is None:
+            return False
+        try:
+            ts = int(payload)
+            if time.time() - ts > AUTH_COOKIE_MAX_AGE:
+                return False
+        except (ValueError, TypeError):
+            return False
+        return True
+
+    def _set_auth_cookie(self, response: web.Response) -> None:
+        """Set the auth cookie on a response."""
+        if self._auth_secret is None:
+            return
+        payload = str(int(time.time()))
+        signed = _sign_cookie(self._auth_secret, payload)
+        response.set_cookie(
+            AUTH_COOKIE_NAME,
+            signed,
+            max_age=AUTH_COOKIE_MAX_AGE,
+            httponly=True,
+            samesite="Lax",
+        )
+
+    def _clear_auth_cookie(self, response: web.Response) -> None:
+        """Clear the auth cookie."""
+        response.del_cookie(AUTH_COOKIE_NAME)
+
+    @web.middleware
+    async def _auth_middleware(
+        self, request: web.Request, handler: callable
+    ) -> web.StreamResponse:
+        """Middleware that enforces password authentication."""
+        # Static files are always accessible (needed for login page assets)
+        if request.path.startswith("/static/"):
+            return await handler(request)
+
+        # No password configured — everything is open
+        if self._password is None:
+            return await handler(request)
+
+        # Check existing cookie
+        authenticated = self._check_auth(request)
+
+        # Query-param bootstrap: /?password=correct sets the cookie
+        query_pass = request.query.get("password", "")
+        if query_pass:
+            if query_pass == self._password:
+                resp = web.HTTPFound("/")
+                self._set_auth_cookie(resp)
+                return resp
+            else:
+                request["auth_error"] = "Incorrect password"
+                authenticated = False
+
+        # Protected API routes
+        if not authenticated:
+            if request.path == "/ws":
+                raise web.HTTPForbidden(
+                    text="Authentication required. Access the main page first."
+                )
+            if request.path.startswith("/download/"):
+                raise web.HTTPForbidden(text="Authentication required.")
+
+        request["authenticated"] = authenticated
+        return await handler(request)
+
     async def _make_app(self) -> web.Application:
         """Make the aiohttp web.Application.
 
         Returns:
             New aiohttp web application.
         """
-        app = web.Application()
+        app = web.Application(middlewares=[self._auth_middleware])
 
         aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(self.templates_path))
 
@@ -248,6 +355,9 @@ class Server:
         router = request.app.router
         font_size = to_int(request.query.get("fontsize", "16"), 16)
 
+        authenticated = request.get("authenticated", True)
+        auth_error = request.get("auth_error", "")
+
         def get_url(route: str, **args) -> str:
             """Get a URL from the aiohttp router."""
             path = router[route].url_for(**args)
@@ -265,6 +375,8 @@ class Server:
         context = {
             "font_size": font_size,
             "app_websocket_url": get_websocket_url("websocket"),
+            "authenticated": authenticated,
+            "auth_error": auth_error,
         }
         context["config"] = {
             "static": {
